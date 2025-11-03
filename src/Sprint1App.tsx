@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ProjectSelector } from './components/projects/ProjectSelector';
 import { ProjectForm } from './components/projects/ProjectForm';
 import { ItemList } from './components/items/ItemList';
@@ -22,7 +22,7 @@ import { Project, Item, ProjectFormData, ItemFormData } from './types';
  */
 export function Sprint1App() {
   // Project state
-  const { projects, loading: projectsLoading, createProject } = useProjects();
+  const { projects, createProject } = useProjects();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
 
@@ -53,7 +53,6 @@ export function Sprint1App() {
       // Refresh selected item if it's the one being edited
       if (selectedItem?.id === editingItem.id) {
         // The item will be updated in the list, re-select it
-        const updatedItems = await items;
         const updated = items.find(i => i.id === editingItem.id);
         if (updated) setSelectedItem(updated);
       }

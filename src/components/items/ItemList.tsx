@@ -1,4 +1,3 @@
-import React from 'react';
 import { Item } from '../../types';
 import { TYPE_COLORS, STATUS_COLORS } from '../../utils/constants';
 
