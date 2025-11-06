@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ProjectSelector } from './components/projects/ProjectSelector';
+import { Header } from './components/layout/Header';
 import { ProjectForm } from './components/projects/ProjectForm';
 import { ItemList } from './components/items/ItemList';
 import { ItemDetail } from './components/items/ItemDetail';
@@ -78,26 +78,13 @@ export function Sprint1App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Logo and title */}
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">Requirements Manager</h1>
-            <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded">Sprint 1</span>
-          </div>
-
-          {/* Project selector */}
-          <div className="flex items-center gap-4">
-            <ProjectSelector
-              projects={projects}
-              selectedProject={selectedProject}
-              onSelectProject={handleSelectProject}
-              onNewProject={() => setShowProjectForm(true)}
-            />
-          </div>
-        </div>
-      </header>
+      {/* Header with logo, project selector, user profile, and logout */}
+      <Header
+        projects={projects}
+        selectedProject={selectedProject}
+        onSelectProject={handleSelectProject}
+        onNewProject={() => setShowProjectForm(true)}
+      />
 
       {/* Main content */}
       <div className="container mx-auto px-4 py-6">
