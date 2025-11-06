@@ -1,4 +1,4 @@
-// Draggable wrapper for ItemNode using @dnd-kit/sortable (FIXED)
+// DraggableItemNode - Enhanced with drop zone visual feedback
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -26,8 +26,15 @@ export function DraggableItemNode({
     setNodeRef,
     transform,
     transition,
-    isDragging
-  } = useSortable({ id: node.id });
+    isDragging,
+    isOver
+  } = useSortable({ 
+    id: node.id,
+    data: {
+      type: 'item',
+      node
+    }
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -44,6 +51,7 @@ export function DraggableItemNode({
         onSelect={onSelect}
         dragHandleProps={{ ...attributes, ...listeners }}
         isDragging={isDragging}
+        isOver={isOver} // Pass drop zone state
       />
     </div>
   );

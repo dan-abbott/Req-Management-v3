@@ -1,4 +1,4 @@
-// Sprint 2 App - FIXED BUTTON STYLING
+// Sprint 2 App - Updated to pass items to ItemForm for parent selection
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -139,7 +139,7 @@ export function Sprint2App() {
             {selectedProject?.name || 'Select a Project'}
           </h1>
           
-          {/* NEW ITEM BUTTON - WITH EXPLICIT INLINE STYLES */}
+          {/* NEW ITEM BUTTON */}
           <button
             onClick={() => setShowItemForm(true)}
             disabled={!selectedProjectId}
@@ -225,19 +225,24 @@ export function Sprint2App() {
         />
       )}
 
+      {/* Create Item Form - Pass items for parent selection */}
       {showItemForm && (
         <ItemForm
           isOpen={showItemForm}
           onClose={() => setShowItemForm(false)}
           onSubmit={handleCreateItem}
+          availableItems={items}
         />
       )}
 
+      {/* Edit Item Form - Pass item data and available items */}
       {editingItem && (
         <ItemForm
           isOpen={!!editingItem}
           onClose={() => setEditingItem(null)}
           onSubmit={handleUpdateItem}
+          item={editingItem}
+          availableItems={items}
         />
       )}
     </div>
