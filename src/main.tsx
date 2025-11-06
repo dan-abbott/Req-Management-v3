@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
+import { Sprint2App }from './Sprint2App.tsx'
 import { AuthProvider } from './components/auth/AuthProvider'
 import './index.css'
 
