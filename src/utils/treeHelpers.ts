@@ -1,10 +1,31 @@
-// Tree helper utilities for hierarchical item structure (FIXED)
+// Tree helper utilities for hierarchical item structure (FULLY FIXED)
 
-import { Item, RequirementLevel } from '../types';
+import { Item, RequirementLevel, ItemType, ItemStatus, Priority } from '../types';
 
-export interface TreeNode extends Item {
-  children: TreeNode[];
-  depth: number; // Renamed from 'level' to avoid conflict with Item.level (RequirementLevel)
+// TreeNode - separate interface that doesn't extend Item to avoid children type conflict
+export interface TreeNode {
+  // Core Item properties (copied, not extended)
+  id: number;
+  project_id: number;
+  type: ItemType;
+  title: string;
+  description?: string;
+  rationale?: string;
+  test_method?: string;
+  status: ItemStatus;
+  priority?: Priority;
+  owner?: string;
+  reviewer_email?: string;
+  tester_email?: string;
+  level?: RequirementLevel;
+  version: number;
+  parent_id?: number;
+  created_at: string;
+  updated_at: string;
+  
+  // Tree-specific properties
+  children: TreeNode[];  // Array of TreeNode, not number[]
+  depth: number;  // Tree depth (0 = root)
 }
 
 /**
@@ -17,7 +38,25 @@ export function buildTree(items: Item[]): TreeNode[] {
   // Initialize all items as tree nodes
   items.forEach(item => {
     itemMap.set(item.id, {
-      ...item,
+      // Copy all Item properties
+      id: item.id,
+      project_id: item.project_id,
+      type: item.type,
+      title: item.title,
+      description: item.description,
+      rationale: item.rationale,
+      test_method: item.test_method,
+      status: item.status,
+      priority: item.priority,
+      owner: item.owner,
+      reviewer_email: item.reviewer_email,
+      tester_email: item.tester_email,
+      level: item.level,
+      version: item.version,
+      parent_id: item.parent_id,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      // Add tree properties
       children: [],
       depth: 0
     });

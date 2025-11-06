@@ -136,3 +136,8 @@ export function getStatusLabel(status: ItemStatus): string {
   };
   return labels[status] || status;
 }
+
+export function getItemTypeColor(type: ItemType): string { ... }
+export function getItemTypeLabel(type: ItemType): string { ... }
+export function getStatusColor(status: ItemStatus): string { ... }
+export function getStatusLabel(status: ItemStatus): string { ... }

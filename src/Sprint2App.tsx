@@ -1,15 +1,13 @@
-// Sprint 2 App - Hierarchical Tree View with Drag & Drop (FIXED)
+// Sprint 2 App - Hierarchical Tree View with Drag & Drop (FULLY FIXED)
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
 import { LoginPage } from './components/auth/LoginPage';
 import { Header } from './components/layout/Header';
 import { ProjectForm } from './components/projects/ProjectForm';
-import { ProjectSelector } from './components/projects/ProjectSelector';
 import { ItemForm } from './components/items/ItemForm';
 import { ItemDetail } from './components/items/ItemDetail';
 import { ItemTree } from './components/items/ItemTree';
-import { Modal } from './components/common/Modal';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
 import { Project, Item, ItemFormData } from './types';
@@ -55,22 +53,22 @@ export function Sprint2App() {
   // Get selected project
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
-  // Handle project creation
-  const handleCreateProject = async (data: Omit<Project, 'id' | 'created_at'>) => {
-    const newProject = await createProject(data);
-    setSelectedProjectId(newProject.id);
-    setShowProjectForm(false);
-  };
-
-  // Handle project selection
-  const handleSelectProject = (projectId: number) => {
-    setSelectedProjectId(projectId);
+  // Handle project selection (Header expects Project object)
+  const handleSelectProject = (project: Project) => {
+    setSelectedProjectId(project.id);
     setSelectedItemId(null); // Clear selection when switching projects
   };
 
   // Handle new project button
   const handleNewProject = () => {
     setShowProjectForm(true);
+  };
+
+  // Handle project creation
+  const handleProjectSubmit = async (data: Omit<Project, 'id' | 'created_at'>) => {
+    const newProject = await createProject(data);
+    setSelectedProjectId(newProject.id);
+    setShowProjectForm(false);
   };
 
   // Handle item creation
@@ -98,7 +96,7 @@ export function Sprint2App() {
   // Handle drag-and-drop move
   const handleMoveItem = async (movedId: number, newParentId: number | null) => {
     try {
-      // Validate and update locally
+      // Validate move
       moveNode(items, movedId, newParentId);
       
       // Update database
@@ -191,44 +189,27 @@ export function Sprint2App() {
 
       {/* Modals */}
       {showProjectForm && (
-        <Modal
+        <ProjectForm
           isOpen={showProjectForm}
           onClose={() => setShowProjectForm(false)}
-          title="Create New Project"
-        >
-          <ProjectForm
-            onSubmit={handleCreateProject}
-          />
-        </Modal>
+          onSubmit={handleProjectSubmit}
+        />
       )}
 
       {showItemForm && selectedProjectId && (
-        <Modal
+        <ItemForm
           isOpen={showItemForm}
           onClose={() => setShowItemForm(false)}
-          title="Create New Item"
-        >
-          <ItemForm
-            onSubmit={handleCreateItem}
-            projectId={selectedProjectId}
-            items={items}
-          />
-        </Modal>
+          onSubmit={handleCreateItem}
+        />
       )}
 
       {editingItem && selectedProjectId && (
-        <Modal
+        <ItemForm
           isOpen={!!editingItem}
           onClose={() => setEditingItem(null)}
-          title="Edit Item"
-        >
-          <ItemForm
-            item={editingItem}
-            onSubmit={handleUpdateItem}
-            projectId={selectedProjectId}
-            items={items}
-          />
-        </Modal>
+          onSubmit={handleUpdateItem}
+        />
       )}
     </div>
   );
