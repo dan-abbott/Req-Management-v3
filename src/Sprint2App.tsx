@@ -1,4 +1,4 @@
-// Sprint 2 App - Hierarchical Tree View with Drag & Drop (FULLY FIXED)
+// Sprint 2 App - Fixed New Item button visibility
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -13,7 +13,6 @@ import { useItems } from './hooks/useItems';
 import { Project, Item, ItemFormData } from './types';
 import { itemsAPI } from './services/api/items';
 import { moveNode } from './utils/treeHelpers';
-import { Plus } from 'lucide-react';
 
 export function Sprint2App() {
   const { user, loading: authLoading } = useAuth();
@@ -129,7 +128,7 @@ export function Sprint2App() {
       <div className="flex h-[calc(100vh-64px)]">
         {/* Left Panel - Tree View */}
         <div className={`${selectedItemId ? 'w-2/3' : 'w-full'} border-r border-gray-200 flex flex-col`}>
-          {/* Toolbar */}
+          {/* Toolbar with New Item Button */}
           <div className="p-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
@@ -138,9 +137,21 @@ export function Sprint2App() {
               <button
                 onClick={() => setShowItemForm(true)}
                 disabled={!selectedProjectId}
-                className="flex items-center gap-2 px-4 py-2 bg-fresh-600 text-white rounded hover:bg-fresh-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-fresh-600 text-white rounded hover:bg-fresh-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                <Plus className="w-4 h-4" />
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M12 4v16m8-8H4" 
+                  />
+                </svg>
                 New Item
               </button>
             </div>
