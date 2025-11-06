@@ -1,4 +1,4 @@
-// Sprint 2 App - Fixed New Item button visibility
+// Sprint 2 App - WITH EXPLICIT NEW ITEM BUTTON
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -55,7 +55,7 @@ export function Sprint2App() {
   // Handle project selection (Header expects Project object)
   const handleSelectProject = (project: Project) => {
     setSelectedProjectId(project.id);
-    setSelectedItemId(null); // Clear selection when switching projects
+    setSelectedItemId(null);
   };
 
   // Handle new project button
@@ -95,15 +95,10 @@ export function Sprint2App() {
   // Handle drag-and-drop move
   const handleMoveItem = async (movedId: number, newParentId: number | null) => {
     try {
-      // Validate move
       moveNode(items, movedId, newParentId);
-      
-      // Update database
       await itemsAPI.update(movedId, { 
         parent_id: newParentId || undefined 
       });
-
-      // Refresh to ensure consistency
       await refresh();
     } catch (error) {
       console.error('Move failed:', error);
@@ -124,78 +119,74 @@ export function Sprint2App() {
         onNewProject={handleNewProject}
       />
 
-      {/* Main Content */}
-      <div className="flex h-[calc(100vh-64px)]">
-        {/* Left Panel - Tree View */}
-        <div className={`${selectedItemId ? 'w-2/3' : 'w-full'} border-r border-gray-200 flex flex-col`}>
-          {/* Toolbar with New Item Button */}
-          <div className="p-4 border-b border-gray-200 bg-white">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {selectedProject?.name || 'Select a Project'}
-              </h2>
-              <button
-                onClick={() => setShowItemForm(true)}
-                disabled={!selectedProjectId}
-                className="flex items-center gap-2 px-4 py-2 bg-fresh-600 text-white rounded hover:bg-fresh-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                <svg 
-                  className="w-5 h-5" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M12 4v16m8-8H4" 
-                  />
-                </svg>
-                New Item
-              </button>
-            </div>
-          </div>
-
-          {/* Tree View */}
-          <div className="flex-1 overflow-hidden">
-            {selectedProjectId ? (
-              itemsLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fresh-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">Loading items...</p>
-                  </div>
-                </div>
-              ) : (
-                <ItemTree
-                  items={items}
-                  selectedId={selectedItemId}
-                  onSelect={setSelectedItemId}
-                  onMove={handleMoveItem}
-                />
-              )
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                <div className="text-6xl mb-4">📁</div>
-                <div className="text-lg font-medium">No project selected</div>
-                <div className="text-sm">Select a project from the header</div>
-              </div>
-            )}
+      {/* Main Content - BELOW HEADER */}
+      <div className="h-[calc(100vh-64px)]">
+        {/* Project Title Bar with New Item Button */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {selectedProject?.name || 'Select a Project'}
+            </h1>
+            
+            {/* NEW ITEM BUTTON - ALWAYS VISIBLE FOR DEBUGGING */}
+            <button
+              onClick={() => {
+                console.log('New Item clicked!');
+                setShowItemForm(true);
+              }}
+              disabled={!selectedProjectId}
+              className="bg-fresh-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-fresh-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+              style={{ minWidth: '150px' }}
+            >
+              + New Item
+            </button>
           </div>
         </div>
 
-        {/* Right Panel - Detail View */}
-        {selectedItemId && selectedItem && (
-          <div className="w-1/3 bg-white overflow-y-auto">
-            <ItemDetail
-              item={selectedItem}
-              onClose={() => setSelectedItemId(null)}
-              onEdit={(item) => setEditingItem(item)}
-              onDelete={handleDeleteItem}
-            />
+        {/* Content Area with Tree */}
+        <div className="flex h-[calc(100%-73px)]">
+          {/* Left Panel - Tree View */}
+          <div className={`${selectedItemId ? 'w-2/3' : 'w-full'} border-r border-gray-200 flex flex-col bg-white`}>
+            {/* Tree View */}
+            <div className="flex-1 overflow-hidden">
+              {selectedProjectId ? (
+                itemsLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fresh-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading items...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ItemTree
+                    items={items}
+                    selectedId={selectedItemId}
+                    onSelect={setSelectedItemId}
+                    onMove={handleMoveItem}
+                  />
+                )
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <div className="text-6xl mb-4">📁</div>
+                  <div className="text-lg font-medium">No project selected</div>
+                  <div className="text-sm">Select a project from the header</div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Right Panel - Detail View */}
+          {selectedItemId && selectedItem && (
+            <div className="w-1/3 bg-white overflow-y-auto">
+              <ItemDetail
+                item={selectedItem}
+                onClose={() => setSelectedItemId(null)}
+                onEdit={(item) => setEditingItem(item)}
+                onDelete={handleDeleteItem}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modals */}
@@ -207,7 +198,7 @@ export function Sprint2App() {
         />
       )}
 
-      {showItemForm && selectedProjectId && (
+      {showItemForm && (
         <ItemForm
           isOpen={showItemForm}
           onClose={() => setShowItemForm(false)}
@@ -215,7 +206,7 @@ export function Sprint2App() {
         />
       )}
 
-      {editingItem && selectedProjectId && (
+      {editingItem && (
         <ItemForm
           isOpen={!!editingItem}
           onClose={() => setEditingItem(null)}
