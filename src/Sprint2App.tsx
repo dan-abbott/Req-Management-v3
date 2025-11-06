@@ -1,4 +1,4 @@
-// Sprint 2 App - WITH EXPLICIT NEW ITEM BUTTON
+// Sprint 2 App - FIXED BUTTON STYLING
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -52,7 +52,7 @@ export function Sprint2App() {
   // Get selected project
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
-  // Handle project selection (Header expects Project object)
+  // Handle project selection
   const handleSelectProject = (project: Project) => {
     setSelectedProjectId(project.id);
     setSelectedItemId(null);
@@ -119,35 +119,62 @@ export function Sprint2App() {
         onNewProject={handleNewProject}
       />
 
-      {/* Main Content - BELOW HEADER */}
+      {/* Main Content */}
       <div className="h-[calc(100vh-64px)]">
         {/* Project Title Bar with New Item Button */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {selectedProject?.name || 'Select a Project'}
-            </h1>
-            
-            {/* NEW ITEM BUTTON - ALWAYS VISIBLE FOR DEBUGGING */}
-            <button
-              onClick={() => {
-                console.log('New Item clicked!');
-                setShowItemForm(true);
-              }}
-              disabled={!selectedProjectId}
-              className="bg-fresh-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-fresh-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
-              style={{ minWidth: '150px' }}
-            >
-              + New Item
-            </button>
-          </div>
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#111827',
+            margin: 0
+          }}>
+            {selectedProject?.name || 'Select a Project'}
+          </h1>
+          
+          {/* NEW ITEM BUTTON - WITH EXPLICIT INLINE STYLES */}
+          <button
+            onClick={() => setShowItemForm(true)}
+            disabled={!selectedProjectId}
+            style={{
+              backgroundColor: selectedProjectId ? '#3FB95A' : '#d1d5db',
+              color: '#ffffff',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              fontWeight: '600',
+              fontSize: '16px',
+              cursor: selectedProjectId ? 'pointer' : 'not-allowed',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              transition: 'all 0.2s',
+              minWidth: '140px'
+            }}
+            onMouseEnter={(e) => {
+              if (selectedProjectId) {
+                e.currentTarget.style.backgroundColor = '#2fa849';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selectedProjectId) {
+                e.currentTarget.style.backgroundColor = '#3FB95A';
+              }
+            }}
+          >
+            + New Item
+          </button>
         </div>
 
-        {/* Content Area with Tree */}
+        {/* Content Area */}
         <div className="flex h-[calc(100%-73px)]">
           {/* Left Panel - Tree View */}
           <div className={`${selectedItemId ? 'w-2/3' : 'w-full'} border-r border-gray-200 flex flex-col bg-white`}>
-            {/* Tree View */}
             <div className="flex-1 overflow-hidden">
               {selectedProjectId ? (
                 itemsLoading ? (
