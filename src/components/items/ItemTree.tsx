@@ -1,6 +1,6 @@
-// Main tree view component with expand/collapse state management
+// Main tree view component with expand/collapse state management (FIXED)
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -11,7 +11,6 @@ import {
   DragEndEvent
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy

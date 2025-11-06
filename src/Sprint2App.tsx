@@ -1,6 +1,6 @@
-// Sprint 2 App - Hierarchical Tree View with Drag & Drop
+// Sprint 2 App - Hierarchical Tree View with Drag & Drop (FIXED)
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
 import { LoginPage } from './components/auth/LoginPage';
 import { Header } from './components/layout/Header';
@@ -12,17 +12,17 @@ import { ItemTree } from './components/items/ItemTree';
 import { Modal } from './components/common/Modal';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
-import { Project, Item } from './types';
+import { Project, Item, ItemFormData } from './types';
 import { itemsAPI } from './services/api/items';
 import { moveNode } from './utils/treeHelpers';
 import { Plus } from 'lucide-react';
 
 export function Sprint2App() {
   const { user, loading: authLoading } = useAuth();
-  const { projects, loading: projectsLoading, createProject } = useProjects();
+  const { projects, createProject } = useProjects();
   
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-  const { items, loading: itemsLoading, createItem, updateItem, deleteItem, refetch } = useItems(selectedProjectId);
+  const { items, loading: itemsLoading, createItem, updateItem, deleteItem, refresh } = useItems(selectedProjectId);
   
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
@@ -52,6 +52,9 @@ export function Sprint2App() {
     return <LoginPage />;
   }
 
+  // Get selected project
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
+
   // Handle project creation
   const handleCreateProject = async (data: Omit<Project, 'id' | 'created_at'>) => {
     const newProject = await createProject(data);
@@ -59,22 +62,35 @@ export function Sprint2App() {
     setShowProjectForm(false);
   };
 
+  // Handle project selection
+  const handleSelectProject = (projectId: number) => {
+    setSelectedProjectId(projectId);
+    setSelectedItemId(null); // Clear selection when switching projects
+  };
+
+  // Handle new project button
+  const handleNewProject = () => {
+    setShowProjectForm(true);
+  };
+
   // Handle item creation
-  const handleCreateItem = async (data: Omit<Item, 'id' | 'created_at' | 'updated_at' | 'version' | 'children'>) => {
+  const handleCreateItem = async (data: ItemFormData) => {
     await createItem(data);
     setShowItemForm(false);
   };
 
   // Handle item update
-  const handleUpdateItem = async (id: number, data: Partial<Item>) => {
-    await updateItem(id, data);
-    setEditingItem(null);
+  const handleUpdateItem = async (data: ItemFormData) => {
+    if (editingItem) {
+      await updateItem(editingItem.id, data);
+      setEditingItem(null);
+    }
   };
 
   // Handle item deletion
-  const handleDeleteItem = async (id: number) => {
+  const handleDeleteItem = async (item: Item) => {
     if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-      await deleteItem(id);
+      await deleteItem(item.id);
       setSelectedItemId(null);
     }
   };
@@ -82,8 +98,8 @@ export function Sprint2App() {
   // Handle drag-and-drop move
   const handleMoveItem = async (movedId: number, newParentId: number | null) => {
     try {
-      // Optimistically update UI
-      const updatedItems = moveNode(items, movedId, newParentId);
+      // Validate and update locally
+      moveNode(items, movedId, newParentId);
       
       // Update database
       await itemsAPI.update(movedId, { 
@@ -91,7 +107,7 @@ export function Sprint2App() {
       });
 
       // Refresh to ensure consistency
-      await refetch();
+      await refresh();
     } catch (error) {
       console.error('Move failed:', error);
       throw error;
@@ -104,24 +120,12 @@ export function Sprint2App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <Header>
-        <div className="flex items-center gap-4">
-          {/* Project Selector */}
-          <ProjectSelector
-            projects={projects}
-            selectedId={selectedProjectId}
-            onSelect={setSelectedProjectId}
-          />
-
-          {/* New Project Button */}
-          <button
-            onClick={() => setShowProjectForm(true)}
-            className="px-3 py-1.5 text-sm text-fresh-700 hover:text-fresh-800 hover:bg-fresh-50 rounded transition-colors"
-          >
-            + New Project
-          </button>
-        </div>
-      </Header>
+      <Header
+        projects={projects}
+        selectedProject={selectedProject}
+        onSelectProject={handleSelectProject}
+        onNewProject={handleNewProject}
+      />
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-64px)]">
@@ -131,9 +135,7 @@ export function Sprint2App() {
           <div className="p-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
-                {selectedProjectId 
-                  ? projects.find(p => p.id === selectedProjectId)?.name || 'Select Project'
-                  : 'Select a Project'}
+                {selectedProject?.name || 'Select a Project'}
               </h2>
               <button
                 onClick={() => setShowItemForm(true)}
@@ -168,7 +170,7 @@ export function Sprint2App() {
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <div className="text-6xl mb-4">📁</div>
                 <div className="text-lg font-medium">No project selected</div>
-                <div className="text-sm">Select a project from the dropdown above</div>
+                <div className="text-sm">Select a project from the header</div>
               </div>
             )}
           </div>
@@ -196,12 +198,11 @@ export function Sprint2App() {
         >
           <ProjectForm
             onSubmit={handleCreateProject}
-            onCancel={() => setShowProjectForm(false)}
           />
         </Modal>
       )}
 
-      {showItemForm && (
+      {showItemForm && selectedProjectId && (
         <Modal
           isOpen={showItemForm}
           onClose={() => setShowItemForm(false)}
@@ -209,24 +210,22 @@ export function Sprint2App() {
         >
           <ItemForm
             onSubmit={handleCreateItem}
-            onCancel={() => setShowItemForm(false)}
-            projectId={selectedProjectId!}
+            projectId={selectedProjectId}
             items={items}
           />
         </Modal>
       )}
 
-      {editingItem && (
+      {editingItem && selectedProjectId && (
         <Modal
           isOpen={!!editingItem}
           onClose={() => setEditingItem(null)}
           title="Edit Item"
         >
           <ItemForm
-            initialData={editingItem}
-            onSubmit={(data) => handleUpdateItem(editingItem.id, data)}
-            onCancel={() => setEditingItem(null)}
-            projectId={selectedProjectId!}
+            item={editingItem}
+            onSubmit={handleUpdateItem}
+            projectId={selectedProjectId}
             items={items}
           />
         </Modal>

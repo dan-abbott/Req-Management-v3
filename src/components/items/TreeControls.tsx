@@ -1,7 +1,6 @@
-// Tree navigation controls
+// Tree navigation controls (FIXED)
 
-import React from 'react';
-import { ChevronDown, Minimize2 } from 'lucide-react';
+import { Minimize2 } from 'lucide-react';
 import { RequirementLevel } from '../../types';
 import { REQUIREMENT_LEVELS } from '../../utils/treeHelpers';
 

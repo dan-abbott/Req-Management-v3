@@ -1,6 +1,5 @@
-// Draggable wrapper for ItemNode using @dnd-kit/sortable
+// Draggable wrapper for ItemNode using @dnd-kit/sortable (FIXED)
 
-import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ItemNode } from './ItemNode';

@@ -1,6 +1,5 @@
-// Individual tree node with expand/collapse and type-specific styling
+// Individual tree node with expand/collapse and type-specific styling (FIXED)
 
-import React from 'react';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { TreeNode } from '../../utils/treeHelpers';
 import { getItemTypeColor, getItemTypeLabel, getStatusColor, getStatusLabel } from '../../utils/constants';
@@ -35,7 +34,7 @@ export function ItemNode({
         ${isSelected ? 'bg-fresh-50 border-fresh-500' : 'border-transparent'}
         ${isDragging ? 'opacity-40' : 'opacity-100'}
       `}
-      style={{ paddingLeft: `${node.level * 24 + 16}px` }}
+      style={{ paddingLeft: `${node.depth * 24 + 16}px` }}
       onClick={() => onSelect(node.id)}
     >
       {/* Drag Handle */}
@@ -73,7 +72,7 @@ export function ItemNode({
         {getItemTypeLabel(node.type)}
         {node.type === 'requirement' && node.level && (
           <span className="ml-1 opacity-75">
-            · {node.level.charAt(0).toUpperCase() + node.level.slice(1).replace('-', ' ')}
+            · {node.level.toString().charAt(0).toUpperCase() + node.level.toString().slice(1).replace('-', ' ')}
           </span>
         )}
       </span>

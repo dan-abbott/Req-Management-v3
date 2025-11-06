@@ -83,3 +83,56 @@ export const PRIORITY_COLORS: Record<Priority, string> = {
   'high': 'text-orange-600',
   'critical': 'text-red-600'
 };
+
+export function getItemTypeColor(type: ItemType): string {
+  const colors = {
+    'epic': 'bg-purple-100 text-purple-800',
+    'requirement': 'bg-blue-100 text-blue-800',
+    'test-case': 'bg-green-100 text-green-800',
+    'defect': 'bg-red-100 text-red-800'
+  };
+  return colors[type] || 'bg-gray-100 text-gray-800';
+}
+
+export function getItemTypeLabel(type: ItemType): string {
+  const labels = {
+    'epic': 'Epic',
+    'requirement': 'Requirement',
+    'test-case': 'Test Case',
+    'defect': 'Defect'
+  };
+  return labels[type] || type;
+}
+
+export function getStatusColor(status: ItemStatus): string {
+  if (status === 'approved' || status === 'passed') {
+    return 'bg-green-100 text-green-800';
+  }
+  if (status === 'in-review' || status === 'ready-for-test') {
+    return 'bg-yellow-100 text-yellow-800';
+  }
+  if (status === 'rejected' || status === 'failed') {
+    return 'bg-red-100 text-red-800';
+  }
+  if (status === 'in-process') {
+    return 'bg-blue-100 text-blue-800';
+  }
+  return 'bg-gray-100 text-gray-800';
+}
+
+export function getStatusLabel(status: ItemStatus): string {
+  const labels = {
+    'draft': 'Draft',
+    'in-review': 'In Review',
+    'approved': 'Approved',
+    'rejected': 'Rejected',
+    'ready-for-test': 'Ready for Test',
+    'passed': 'Passed',
+    'failed': 'Failed',
+    'not-started': 'Not Started',
+    'in-process': 'In Process',
+    'resolved': 'Resolved',
+    'backlog': 'Backlog'
+  };
+  return labels[status] || status;
+}

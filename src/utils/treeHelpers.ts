@@ -1,10 +1,10 @@
-// Tree helper utilities for hierarchical item structure
+// Tree helper utilities for hierarchical item structure (FIXED)
 
 import { Item, RequirementLevel } from '../types';
 
 export interface TreeNode extends Item {
   children: TreeNode[];
-  level: number; // Depth in tree (0 = root)
+  depth: number; // Renamed from 'level' to avoid conflict with Item.level (RequirementLevel)
 }
 
 /**
@@ -19,7 +19,7 @@ export function buildTree(items: Item[]): TreeNode[] {
     itemMap.set(item.id, {
       ...item,
       children: [],
-      level: 0
+      depth: 0
     });
   });
 
@@ -33,7 +33,7 @@ export function buildTree(items: Item[]): TreeNode[] {
       // Has parent - add to parent's children
       const parent = itemMap.get(item.parent_id)!;
       parent.children.push(node);
-      node.level = parent.level + 1;
+      node.depth = parent.depth + 1;
     } else {
       // No parent - this is a root node
       roots.push(node);
@@ -51,22 +51,6 @@ export function buildTree(items: Item[]): TreeNode[] {
   roots.forEach(sortChildren);
   
   return roots;
-}
-
-/**
- * Flatten tree back to array (for updates)
- */
-export function flattenTree(nodes: TreeNode[]): Item[] {
-  const result: Item[] = [];
-  
-  const traverse = (node: TreeNode) => {
-    const { level, ...item } = node; // Remove level, keep Item properties
-    result.push(item as Item);
-    node.children.forEach(traverse);
-  };
-  
-  nodes.forEach(traverse);
-  return result;
 }
 
 /**
@@ -112,24 +96,12 @@ export function moveNode(
   }
 
   // Update the moved item's parent
-  const updatedItems = items.map(item => {
+  return items.map(item => {
     if (item.id === movedId) {
       return { ...item, parent_id: newParentId || undefined };
     }
     return item;
   });
-
-  // Update children arrays
-  const itemMap = new Map(updatedItems.map(item => [item.id, item]));
-  
-  updatedItems.forEach(item => {
-    // Rebuild children array based on parent_id relationships
-    item.children = updatedItems
-      .filter(child => child.parent_id === item.id)
-      .map(child => child.id);
-  });
-
-  return updatedItems;
 }
 
 /**
@@ -168,7 +140,7 @@ export function shouldExpandToLevel(
   }
   
   // For non-requirements (epics, tests, defects), expand if depth < 3
-  return node.level < 3;
+  return node.depth < 3;
 }
 
 /**
