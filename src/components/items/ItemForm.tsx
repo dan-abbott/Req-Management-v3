@@ -1,4 +1,4 @@
-// ItemForm - Fixed with parent selector, compact layout, and proper data population
+// ItemForm - Complete with parent selector, compact layout, and data population
 
 import { useState, useEffect } from 'react';
 import { Item, ItemType, ItemStatus, ItemFormData, RequirementLevel } from '../../types';
@@ -8,11 +8,11 @@ interface ItemFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ItemFormData) => Promise<void>;
-  item?: Item; // For editing - renamed from initialData
-  availableItems?: Item[];  // ← Must have this
+  item?: Item; // For editing
+  availableItems?: Item[]; // For parent selection
 }
 
-export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
+export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] }: ItemFormProps) {
   const [formData, setFormData] = useState<ItemFormData>({
     type: item?.type || 'requirement',
     title: item?.title || '',
@@ -70,6 +70,31 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Get valid parent options (can't be self or descendants)
+  const getParentOptions = () => {
+    if (!availableItems.length) return [];
+    
+    // If editing, exclude self and descendants
+    if (item) {
+      const getDescendantIds = (itemId: number): number[] => {
+        const ids = [itemId];
+        availableItems
+          .filter(i => i.parent_id === itemId)
+          .forEach(child => {
+            ids.push(...getDescendantIds(child.id));
+          });
+        return ids;
+      };
+      
+      const excludeIds = getDescendantIds(item.id);
+      return availableItems.filter(i => !excludeIds.includes(i.id));
+    }
+    
+    return availableItems;
+  };
+
+  const parentOptions = getParentOptions();
+
   if (!isOpen) return null;
 
   return (
@@ -98,23 +123,43 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
             </div>
           )}
 
-          {/* Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type *
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => updateField('type', e.target.value as ItemType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500"
-              disabled={!!item} // Can't change type when editing
-            >
-              {ITEM_TYPES.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+          {/* Type and Parent - SAME LINE */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type *
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) => updateField('type', e.target.value as ItemType)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500"
+                disabled={!!item} // Can't change type when editing
+              >
+                {ITEM_TYPES.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Item
+              </label>
+              <select
+                value={formData.parent_id || ''}
+                onChange={(e) => updateField('parent_id', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500"
+              >
+                <option value="">None (root level)</option>
+                {parentOptions.map(option => (
+                  <option key={option.id} value={option.id}>
+                    #{option.id} - {option.title.substring(0, 40)}{option.title.length > 40 ? '...' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Title */}
@@ -186,7 +231,7 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Reviewer Email
+                Reviewer
               </label>
               <input
                 type="email"
@@ -205,16 +250,16 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
             </label>
             <textarea
               value={formData.description || ''}
-              onChange={(e) => updateField('description', e.target.value)}
+              onChange={(e) => {
+                updateField('description', e.target.value);
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500 resize-none"
               rows={2}
               placeholder="Enter description..."
-              style={{ minHeight: '60px', maxHeight: '200px' }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = target.scrollHeight + 'px';
-              }}
+              style={{ minHeight: '60px', maxHeight: '200px', overflow: 'auto' }}
             />
           </div>
 
@@ -247,16 +292,16 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
                 </label>
                 <textarea
                   value={formData.rationale || ''}
-                  onChange={(e) => updateField('rationale', e.target.value)}
+                  onChange={(e) => {
+                    updateField('rationale', e.target.value);
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500 resize-none"
                   rows={2}
                   placeholder="Why is this requirement needed?"
-                  style={{ minHeight: '60px', maxHeight: '200px' }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = target.scrollHeight + 'px';
-                  }}
+                  style={{ minHeight: '60px', maxHeight: '200px', overflow: 'auto' }}
                 />
               </div>
             </>
@@ -271,16 +316,16 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
                 </label>
                 <textarea
                   value={formData.test_method || ''}
-                  onChange={(e) => updateField('test_method', e.target.value)}
+                  onChange={(e) => {
+                    updateField('test_method', e.target.value);
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500 resize-none"
                   rows={2}
                   placeholder="How to execute this test..."
-                  style={{ minHeight: '60px', maxHeight: '200px' }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = target.scrollHeight + 'px';
-                  }}
+                  style={{ minHeight: '60px', maxHeight: '200px', overflow: 'auto' }}
                 />
               </div>
 
@@ -298,8 +343,6 @@ export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
               </div>
             </>
           )}
-
-          {/* Parent Item Selector - REMOVED for now, will add in separate component */}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

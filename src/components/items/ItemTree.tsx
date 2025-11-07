@@ -1,24 +1,20 @@
-// Main tree view component with expand/collapse state management (FIXED)
+// ItemTree - Fixed drag-and-drop for tree nesting (not list reordering)
 
 import { useState, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy
-} from '@dnd-kit/sortable';
 import { TreeNode, buildTree, shouldExpandToLevel } from '../../utils/treeHelpers';
 import { Item, RequirementLevel } from '../../types';
 import { TreeControls } from './TreeControls';
-import { DraggableItemNode } from './DraggableItemNode';
+import { DroppableItemNode } from './DroppableItemNode';
 
 interface ItemTreeProps {
   items: Item[];
@@ -33,12 +29,16 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
   // Expand/collapse state
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  
+  // Drag state
+  const [activeId, setActiveId] = useState<number | null>(null);
 
-  // Drag and drop sensors
+  // Drag sensor - only pointer, no keyboard for simplicity
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts
+      },
     })
   );
 
@@ -75,9 +75,16 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     setExpandedIds(idsToExpand);
   };
 
+  // Handle drag start
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(Number(event.active.id));
+  };
+
   // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    
+    setActiveId(null);
 
     if (!over || active.id === over.id) return;
 
@@ -91,30 +98,19 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     });
   };
 
-  // Flatten tree for sortable context (all items at all levels)
-  const flatItems = useMemo(() => {
-    const result: TreeNode[] = [];
-    const traverse = (node: TreeNode) => {
-      result.push(node);
-      if (expandedIds.has(node.id)) {
-        node.children.forEach(traverse);
-      }
-    };
-    tree.forEach(traverse);
-    return result;
-  }, [tree, expandedIds]);
-
   // Recursive render function
-  const renderNode = (node: TreeNode) => {
+  const renderNode = (node: TreeNode, depth: number = 0) => {
     const isExpanded = expandedIds.has(node.id);
     const isSelected = selectedId === node.id;
+    const isBeingDragged = activeId === node.id;
 
     return (
       <div key={node.id}>
-        <DraggableItemNode
+        <DroppableItemNode
           node={node}
           isExpanded={isExpanded}
           isSelected={isSelected}
+          isBeingDragged={isBeingDragged}
           onToggleExpand={toggleExpand}
           onSelect={onSelect}
         />
@@ -122,12 +118,28 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
         {/* Recursively render children if expanded */}
         {isExpanded && node.children.length > 0 && (
           <div>
-            {node.children.map(child => renderNode(child))}
+            {node.children.map(child => renderNode(child, depth + 1))}
           </div>
         )}
       </div>
     );
   };
+
+  // Get active node for drag overlay
+  const activeNode = useMemo(() => {
+    if (!activeId) return null;
+    
+    const findNodeById = (nodes: TreeNode[]): TreeNode | null => {
+      for (const node of nodes) {
+        if (node.id === activeId) return node;
+        const found = findNodeById(node.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    
+    return findNodeById(tree);
+  }, [activeId, tree]);
 
   // Empty state
   if (tree.length === 0) {
@@ -153,14 +165,27 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext
-            items={flatItems.map(item => item.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {tree.map(node => renderNode(node))}
-          </SortableContext>
+          {tree.map(node => renderNode(node))}
+          
+          {/* Drag Overlay - shows what's being dragged */}
+          <DragOverlay>
+            {activeNode && (
+              <div 
+                className="bg-white border-2 border-fresh-500 rounded shadow-lg opacity-90"
+                style={{ padding: '8px', minWidth: '300px' }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                    {activeNode.type}
+                  </span>
+                  <span className="text-sm font-medium">{activeNode.title}</span>
+                </div>
+              </div>
+            )}
+          </DragOverlay>
         </DndContext>
       </div>
     </div>
