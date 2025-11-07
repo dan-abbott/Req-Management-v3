@@ -9,6 +9,7 @@ interface ItemFormProps {
   onClose: () => void;
   onSubmit: (data: ItemFormData) => Promise<void>;
   item?: Item; // For editing - renamed from initialData
+  availableItems?: Item[];  // ← Must have this
 }
 
 export function ItemForm({ isOpen, onClose, onSubmit, item }: ItemFormProps) {
