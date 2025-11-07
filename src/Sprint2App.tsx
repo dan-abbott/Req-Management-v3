@@ -71,16 +71,14 @@ export function Sprint2App() {
 
   const handleUpdateItem = async (data: ItemFormData) => {
     if (editingItem) {
-      // IMPORTANT: Explicitly handle parent_id
-      // If parent_id is undefined in formData, set it to null for the API
-      const updateData = {
-        ...data,
-        parent_id: data.parent_id === undefined ? null : data.parent_id
-      };
+      console.log('Updating item with data:', data);
       
-      console.log('Updating item with data:', updateData);
+      // If parent_id is undefined, explicitly update it via the API to null
+      if (data.parent_id === undefined) {
+        await itemsAPI.update(editingItem.id, { parent_id: null });
+      }
       
-      await updateItem(editingItem.id, updateData);
+      await updateItem(editingItem.id, data);
       setEditingItem(null);
       
       // Force refresh to ensure we see the change
@@ -102,10 +100,12 @@ export function Sprint2App() {
       // Validate move
       moveNode(items, movedId, newParentId);
       
-      // Update database - explicitly set parent_id to null if that's what we want
-      await itemsAPI.update(movedId, { 
-        parent_id: newParentId === null ? null : newParentId
-      });
+      // Update database - use itemsAPI.update directly which accepts null
+      if (newParentId === null) {
+        await itemsAPI.update(movedId, { parent_id: null });
+      } else {
+        await itemsAPI.update(movedId, { parent_id: newParentId });
+      }
 
       // Refresh to ensure consistency
       await refresh();
