@@ -1,6 +1,6 @@
-// ItemTree - Fixed drag-and-drop for tree nesting (not list reordering)
+// ItemTree - Fixed to preserve expanded state and allow root-level drops
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -11,6 +11,7 @@ import {
   DragOverlay,
   DragStartEvent
 } from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import { TreeNode, buildTree, shouldExpandToLevel } from '../../utils/treeHelpers';
 import { Item, RequirementLevel } from '../../types';
 import { TreeControls } from './TreeControls';
@@ -27,17 +28,34 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
   // Build tree structure
   const tree = useMemo(() => buildTree(items), [items]);
 
-  // Expand/collapse state
+  // Expand/collapse state - PRESERVED across refreshes
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   
   // Drag state
   const [activeId, setActiveId] = useState<number | null>(null);
 
-  // Drag sensor - only pointer, no keyboard for simplicity
+  // Root level drop zone
+  const {
+    setNodeRef: setRootDropRef,
+    isOver: isOverRoot
+  } = useDroppable({
+    id: 'root-drop-zone',
+    data: { isRoot: true }
+  });
+
+  // Auto-expand all nodes on initial load
+  useEffect(() => {
+    if (items.length > 0 && expandedIds.size === 0) {
+      const allIds = new Set(items.map(item => item.id));
+      setExpandedIds(allIds);
+    }
+  }, [items.length]); // Only run when items first load
+
+  // Drag sensor
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
+        distance: 8,
       },
     })
   );
@@ -81,21 +99,51 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
   };
 
   // Handle drag end
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     setActiveId(null);
 
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
     const movedId = Number(active.id);
+    
+    // Check if dropped on root zone
+    if (over.id === 'root-drop-zone') {
+      try {
+        // SAVE expanded state before move
+        const savedExpandedIds = new Set(expandedIds);
+        
+        await onMove(movedId, null); // null = root level
+        
+        // RESTORE expanded state after move
+        setExpandedIds(savedExpandedIds);
+      } catch (error) {
+        console.error('Failed to move item:', error);
+        alert('Failed to move item. ' + error.message);
+      }
+      return;
+    }
+
+    // Dropped on another item
+    if (active.id === over.id) return; // Same item
+
     const newParentId = Number(over.id);
 
-    // Call parent handler to update database
-    onMove(movedId, newParentId).catch(error => {
+    try {
+      // SAVE expanded state before move
+      const savedExpandedIds = new Set(expandedIds);
+      
+      await onMove(movedId, newParentId);
+      
+      // RESTORE expanded state after move
+      // Also expand the new parent so you can see the moved item
+      savedExpandedIds.add(newParentId);
+      setExpandedIds(savedExpandedIds);
+    } catch (error) {
       console.error('Failed to move item:', error);
       alert('Failed to move item. ' + error.message);
-    });
+    }
   };
 
   // Recursive render function
@@ -168,9 +216,30 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
+          {/* ROOT LEVEL DROP ZONE - At the top */}
+          <div
+            ref={setRootDropRef}
+            className={`
+              px-4 py-3 border-2 border-dashed transition-all mb-2 mx-2 mt-2 rounded
+              ${isOverRoot 
+                ? 'border-fresh-500 bg-fresh-50' 
+                : 'border-gray-300 bg-gray-50'
+              }
+            `}
+          >
+            <div className={`text-sm text-center ${isOverRoot ? 'text-fresh-700 font-semibold' : 'text-gray-500'}`}>
+              {isOverRoot ? (
+                <>⬇ Drop here to move to root level (un-nest)</>
+              ) : (
+                <>Drop here to move item to root level</>
+              )}
+            </div>
+          </div>
+
+          {/* Tree Items */}
           {tree.map(node => renderNode(node))}
           
-          {/* Drag Overlay - shows what's being dragged */}
+          {/* Drag Overlay */}
           <DragOverlay>
             {activeNode && (
               <div 
