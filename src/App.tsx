@@ -1,5 +1,5 @@
 import { useAuth } from './components/auth/AuthProvider';
-import { Sprint1App } from './Sprint1App';
+import { Sprint2App } from './Sprint2App';
 
 function App() {
   const { user, loading } = useAuth();
