@@ -15,7 +15,7 @@ function App() {
 
   // If authenticated, show Sprint 1 app
   if (user) {
-    return <Sprint1App />;
+    return <Sprint2App />;
   }
 
   // Not authenticated - this shouldn't happen if AuthProvider redirects properly
