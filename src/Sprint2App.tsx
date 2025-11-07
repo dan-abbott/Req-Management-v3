@@ -1,4 +1,4 @@
-// Sprint 2 App - Updated to pass items to ItemForm for parent selection
+// Sprint 2 App - Fixed to properly handle null parent_id updates
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -26,14 +26,12 @@ export function Sprint2App() {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
-  // Auto-select first project on load
   useEffect(() => {
     if (projects.length > 0 && !selectedProjectId) {
       setSelectedProjectId(projects[0].id);
     }
   }, [projects, selectedProjectId]);
 
-  // Loading states
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -49,42 +47,47 @@ export function Sprint2App() {
     return <LoginPage />;
   }
 
-  // Get selected project
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
-  // Handle project selection
   const handleSelectProject = (project: Project) => {
     setSelectedProjectId(project.id);
     setSelectedItemId(null);
   };
 
-  // Handle new project button
   const handleNewProject = () => {
     setShowProjectForm(true);
   };
 
-  // Handle project creation
   const handleProjectSubmit = async (data: Omit<Project, 'id' | 'created_at'>) => {
     const newProject = await createProject(data);
     setSelectedProjectId(newProject.id);
     setShowProjectForm(false);
   };
 
-  // Handle item creation
   const handleCreateItem = async (data: ItemFormData) => {
     await createItem(data);
     setShowItemForm(false);
   };
 
-  // Handle item update
   const handleUpdateItem = async (data: ItemFormData) => {
     if (editingItem) {
-      await updateItem(editingItem.id, data);
+      // IMPORTANT: Explicitly handle parent_id
+      // If parent_id is undefined in formData, set it to null for the API
+      const updateData = {
+        ...data,
+        parent_id: data.parent_id === undefined ? null : data.parent_id
+      };
+      
+      console.log('Updating item with data:', updateData);
+      
+      await updateItem(editingItem.id, updateData);
       setEditingItem(null);
+      
+      // Force refresh to ensure we see the change
+      await refresh();
     }
   };
 
-  // Handle item deletion
   const handleDeleteItem = async (item: Item) => {
     if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
       await deleteItem(item.id);
@@ -92,13 +95,19 @@ export function Sprint2App() {
     }
   };
 
-  // Handle drag-and-drop move
   const handleMoveItem = async (movedId: number, newParentId: number | null) => {
     try {
+      console.log('Moving item:', movedId, 'to parent:', newParentId);
+      
+      // Validate move
       moveNode(items, movedId, newParentId);
+      
+      // Update database - explicitly set parent_id to null if that's what we want
       await itemsAPI.update(movedId, { 
-        parent_id: newParentId || undefined 
+        parent_id: newParentId === null ? null : newParentId
       });
+
+      // Refresh to ensure consistency
       await refresh();
     } catch (error) {
       console.error('Move failed:', error);
@@ -106,12 +115,10 @@ export function Sprint2App() {
     }
   };
 
-  // Get selected item
   const selectedItem = items.find(item => item.id === selectedItemId);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <Header
         projects={projects}
         selectedProject={selectedProject}
@@ -119,9 +126,8 @@ export function Sprint2App() {
         onNewProject={handleNewProject}
       />
 
-      {/* Main Content */}
       <div className="h-[calc(100vh-64px)]">
-        {/* Project Title Bar with New Item Button */}
+        {/* Project Title Bar */}
         <div style={{
           backgroundColor: '#ffffff',
           borderBottom: '1px solid #e5e7eb',
@@ -139,7 +145,6 @@ export function Sprint2App() {
             {selectedProject?.name || 'Select a Project'}
           </h1>
           
-          {/* NEW ITEM BUTTON */}
           <button
             onClick={() => setShowItemForm(true)}
             disabled={!selectedProjectId}
@@ -173,7 +178,6 @@ export function Sprint2App() {
 
         {/* Content Area */}
         <div className="flex h-[calc(100%-73px)]">
-          {/* Left Panel - Tree View */}
           <div className={`${selectedItemId ? 'w-2/3' : 'w-full'} border-r border-gray-200 flex flex-col bg-white`}>
             <div className="flex-1 overflow-hidden">
               {selectedProjectId ? (
@@ -202,7 +206,6 @@ export function Sprint2App() {
             </div>
           </div>
 
-          {/* Right Panel - Detail View */}
           {selectedItemId && selectedItem && (
             <div className="w-1/3 bg-white overflow-y-auto">
               <ItemDetail
@@ -225,7 +228,6 @@ export function Sprint2App() {
         />
       )}
 
-      {/* Create Item Form - Pass items for parent selection */}
       {showItemForm && (
         <ItemForm
           isOpen={showItemForm}
@@ -235,7 +237,6 @@ export function Sprint2App() {
         />
       )}
 
-      {/* Edit Item Form - Pass item data and available items */}
       {editingItem && (
         <ItemForm
           isOpen={!!editingItem}

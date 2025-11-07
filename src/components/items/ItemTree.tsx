@@ -1,15 +1,16 @@
-// ItemTree - Fixed to preserve expanded state and allow root-level drops
+// ItemTree - Fixed root drop zone and better collision detection
 
 import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
   DragOverlay,
-  DragStartEvent
+  DragStartEvent,
+  DragOverEvent
 } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
 import { TreeNode, buildTree, shouldExpandToLevel } from '../../utils/treeHelpers';
@@ -25,19 +26,14 @@ interface ItemTreeProps {
 }
 
 export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps) {
-  // Build tree structure
   const tree = useMemo(() => buildTree(items), [items]);
-
-  // Expand/collapse state - PRESERVED across refreshes
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
-  
-  // Drag state
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [isOverRoot, setIsOverRoot] = useState(false);
 
   // Root level drop zone
   const {
-    setNodeRef: setRootDropRef,
-    isOver: isOverRoot
+    setNodeRef: setRootDropRef
   } = useDroppable({
     id: 'root-drop-zone',
     data: { isRoot: true }
@@ -49,9 +45,8 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
       const allIds = new Set(items.map(item => item.id));
       setExpandedIds(allIds);
     }
-  }, [items.length]); // Only run when items first load
+  }, [items.length]);
 
-  // Drag sensor
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -60,7 +55,6 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     })
   );
 
-  // Toggle expand/collapse
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
@@ -73,36 +67,40 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     });
   };
 
-  // Collapse all nodes
   const handleCollapseAll = () => {
     setExpandedIds(new Set());
   };
 
-  // Expand to specific requirement level
   const handleExpandToLevel = (targetLevel: RequirementLevel) => {
     const idsToExpand = new Set<number>();
-
     const traverse = (node: TreeNode) => {
       if (shouldExpandToLevel(node, targetLevel)) {
         idsToExpand.add(node.id);
       }
       node.children.forEach(traverse);
     };
-
     tree.forEach(traverse);
     setExpandedIds(idsToExpand);
   };
 
-  // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(Number(event.active.id));
   };
 
-  // Handle drag end
+  // Track when hovering over root zone
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over?.id === 'root-drop-zone') {
+      setIsOverRoot(true);
+    } else {
+      setIsOverRoot(false);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     setActiveId(null);
+    setIsOverRoot(false);
 
     if (!over) return;
 
@@ -111,12 +109,11 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     // Check if dropped on root zone
     if (over.id === 'root-drop-zone') {
       try {
-        // SAVE expanded state before move
         const savedExpandedIds = new Set(expandedIds);
         
-        await onMove(movedId, null); // null = root level
+        console.log('Moving to root level:', movedId);
+        await onMove(movedId, null);
         
-        // RESTORE expanded state after move
         setExpandedIds(savedExpandedIds);
       } catch (error) {
         console.error('Failed to move item:', error);
@@ -127,18 +124,16 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     }
 
     // Dropped on another item
-    if (active.id === over.id) return; // Same item
+    if (active.id === over.id) return;
 
     const newParentId = Number(over.id);
 
     try {
-      // SAVE expanded state before move
       const savedExpandedIds = new Set(expandedIds);
       
+      console.log('Moving to parent:', movedId, '→', newParentId);
       await onMove(movedId, newParentId);
       
-      // RESTORE expanded state after move
-      // Also expand the new parent so you can see the moved item
       savedExpandedIds.add(newParentId);
       setExpandedIds(savedExpandedIds);
     } catch (error) {
@@ -148,7 +143,6 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     }
   };
 
-  // Recursive render function
   const renderNode = (node: TreeNode, depth: number = 0) => {
     const isExpanded = expandedIds.has(node.id);
     const isSelected = selectedId === node.id;
@@ -165,7 +159,6 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
           onSelect={onSelect}
         />
 
-        {/* Recursively render children if expanded */}
         {isExpanded && node.children.length > 0 && (
           <div>
             {node.children.map(child => renderNode(child, depth + 1))}
@@ -175,7 +168,6 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     );
   };
 
-  // Get active node for drag overlay
   const activeNode = useMemo(() => {
     if (!activeId) return null;
     
@@ -191,7 +183,6 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     return findNodeById(tree);
   }, [activeId, tree]);
 
-  // Empty state
   if (tree.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -204,32 +195,42 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tree Controls */}
       <TreeControls
         onCollapseAll={handleCollapseAll}
         onExpandToLevel={handleExpandToLevel}
       />
 
-      {/* Tree View */}
       <div className="flex-1 overflow-y-auto">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={closestCorners}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          {/* ROOT LEVEL DROP ZONE - At the top */}
+          {/* ROOT LEVEL DROP ZONE */}
           <div
             ref={setRootDropRef}
-            className={`
-              px-4 py-3 border-2 border-dashed transition-all mb-2 mx-2 mt-2 rounded
-              ${isOverRoot 
-                ? 'border-fresh-500 bg-fresh-50' 
-                : 'border-gray-300 bg-gray-50'
-              }
-            `}
+            style={{
+              padding: '16px',
+              margin: '8px',
+              border: '2px dashed',
+              borderColor: isOverRoot ? '#3FB95A' : '#d1d5db',
+              backgroundColor: isOverRoot ? '#f0fdf4' : '#f9fafb',
+              borderRadius: '8px',
+              textAlign: 'center',
+              transition: 'all 0.2s',
+              minHeight: '60px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
           >
-            <div className={`text-sm text-center ${isOverRoot ? 'text-fresh-700 font-semibold' : 'text-gray-500'}`}>
+            <div style={{
+              fontSize: '14px',
+              color: isOverRoot ? '#15803d' : '#6b7280',
+              fontWeight: isOverRoot ? '600' : '400'
+            }}>
               {isOverRoot ? (
                 <>⬇ Drop here to move to root level (un-nest)</>
               ) : (
@@ -238,10 +239,8 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
             </div>
           </div>
 
-          {/* Tree Items */}
           {tree.map(node => renderNode(node))}
           
-          {/* Drag Overlay */}
           <DragOverlay>
             {activeNode && (
               <div 
