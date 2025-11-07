@@ -120,7 +120,8 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
         setExpandedIds(savedExpandedIds);
       } catch (error) {
         console.error('Failed to move item:', error);
-        alert('Failed to move item. ' + error.message);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        alert('Failed to move item. ' + message);
       }
       return;
     }
@@ -142,7 +143,8 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
       setExpandedIds(savedExpandedIds);
     } catch (error) {
       console.error('Failed to move item:', error);
-      alert('Failed to move item. ' + error.message);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert('Failed to move item. ' + message);
     }
   };
 
