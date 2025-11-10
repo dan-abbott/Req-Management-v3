@@ -1,9 +1,9 @@
-// ItemTree - Fixed root drop zone and better collision detection
+// ItemTree - Complete with working root drop zone
 
 import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
-  closestCorners,
+  closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
@@ -32,9 +32,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
   const [isOverRoot, setIsOverRoot] = useState(false);
 
   // Root level drop zone
-  const {
-    setNodeRef: setRootDropRef
-  } = useDroppable({
+  const { setNodeRef: setRootDropRef } = useDroppable({
     id: 'root-drop-zone',
     data: { isRoot: true }
   });
@@ -87,7 +85,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     setActiveId(Number(event.active.id));
   };
 
-  // Track when hovering over root zone
+  // CRITICAL: Track when hovering over root zone
   const handleDragOver = (event: DragOverEvent) => {
     if (event.over?.id === 'root-drop-zone') {
       setIsOverRoot(true);
@@ -110,10 +108,8 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     if (over.id === 'root-drop-zone') {
       try {
         const savedExpandedIds = new Set(expandedIds);
-        
         console.log('Moving to root level:', movedId);
         await onMove(movedId, null);
-        
         setExpandedIds(savedExpandedIds);
       } catch (error) {
         console.error('Failed to move item:', error);
@@ -130,10 +126,8 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
     try {
       const savedExpandedIds = new Set(expandedIds);
-      
       console.log('Moving to parent:', movedId, '→', newParentId);
       await onMove(movedId, newParentId);
-      
       savedExpandedIds.add(newParentId);
       setExpandedIds(savedExpandedIds);
     } catch (error) {
@@ -143,7 +137,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     }
   };
 
-  const renderNode = (node: TreeNode, depth: number = 0) => {
+  const renderNode = (node: TreeNode) => {
     const isExpanded = expandedIds.has(node.id);
     const isSelected = selectedId === node.id;
     const isBeingDragged = activeId === node.id;
@@ -161,7 +155,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
         {isExpanded && node.children.length > 0 && (
           <div>
-            {node.children.map(child => renderNode(child, depth + 1))}
+            {node.children.map(child => renderNode(child))}
           </div>
         )}
       </div>
@@ -194,70 +188,49 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col gap-4">
       <TreeControls
         onCollapseAll={handleCollapseAll}
         onExpandToLevel={handleExpandToLevel}
       />
 
-      <div className="flex-1 overflow-y-auto">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        {/* ROOT DROP ZONE */}
+        <div
+          ref={setRootDropRef}
+          className={`
+            mb-4 p-4 rounded-lg border-2 border-dashed text-center transition-all
+            ${isOverRoot 
+              ? 'border-[#3FB95A] bg-[#3FB95A] bg-opacity-10 text-[#3FB95A]' 
+              : 'border-gray-300 bg-gray-50 text-gray-500'
+            }
+          `}
         >
-          {/* ROOT LEVEL DROP ZONE */}
-          <div
-            ref={setRootDropRef}
-            style={{
-              padding: '16px',
-              margin: '8px',
-              border: '2px dashed',
-              borderColor: isOverRoot ? '#3FB95A' : '#d1d5db',
-              backgroundColor: isOverRoot ? '#f0fdf4' : '#f9fafb',
-              borderRadius: '8px',
-              textAlign: 'center',
-              transition: 'all 0.2s',
-              minHeight: '60px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <div style={{
-              fontSize: '14px',
-              color: isOverRoot ? '#15803d' : '#6b7280',
-              fontWeight: isOverRoot ? '600' : '400'
-            }}>
-              {isOverRoot ? (
-                <>⬇ Drop here to move to root level (un-nest)</>
-              ) : (
-                <>Drop here to move item to root level</>
-              )}
-            </div>
-          </div>
+          {isOverRoot ? '⬇ Drop here to move to root level (un-nest)' : 'Drop here to move item to root level'}
+        </div>
 
+        {/* TREE */}
+        <div className="space-y-1">
           {tree.map(node => renderNode(node))}
-          
-          <DragOverlay>
-            {activeNode && (
-              <div 
-                className="bg-white border-2 border-fresh-500 rounded shadow-lg opacity-90"
-                style={{ padding: '8px', minWidth: '300px' }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                    {activeNode.type}
-                  </span>
-                  <span className="text-sm font-medium">{activeNode.title}</span>
-                </div>
+        </div>
+
+        {/* DRAG OVERLAY */}
+        <DragOverlay>
+          {activeNode ? (
+            <div className="bg-white shadow-xl rounded-lg border-2 border-[#3FB95A] p-3 opacity-90">
+              <div className="font-medium text-gray-900">
+                #{activeNode.id} - {activeNode.title}
               </div>
-            )}
-          </DragOverlay>
-        </DndContext>
-      </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
