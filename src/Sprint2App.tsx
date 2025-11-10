@@ -1,7 +1,6 @@
 // Sprint2App - Complete TypeScript fix for parent_id handling
 
 import { useState } from 'react';
-import { supabase } from './services/supabase';
 import { Header } from './components/layout/Header';
 import { ItemTree } from './components/items/ItemTree';
 import { ItemDetail } from './components/items/ItemDetail';
@@ -90,10 +89,6 @@ export function Sprint2App() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
   if (projectsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -109,7 +104,6 @@ export function Sprint2App() {
         selectedProject={selectedProject}
         onSelectProject={handleSelectProject}
         onNewProject={() => setShowProjectForm(true)}
-        onLogout={handleLogout}
       />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
