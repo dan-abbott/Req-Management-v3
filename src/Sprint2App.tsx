@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { supabase } from './services/supabase';
 import { Header } from './components/layout/Header';
 import { ItemTree } from './components/items/ItemTree';
-import { ItemPanel } from './components/items/ItemPanel';
+import { ItemDetail } from './components/items/ItemDetail';
 import { ItemForm } from './components/items/ItemForm';
 import { ProjectForm } from './components/projects/ProjectForm';
 import { useProjects } from './hooks/useProjects';
@@ -24,6 +24,7 @@ export function Sprint2App() {
   const { items, loading: itemsLoading, createItem, updateItem, deleteItem, refresh } = useItems(selectedProjectId);
 
   const selectedItem = items.find(item => item.id === selectedItemId) || null;
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
   const handleSelectProject = (project: Project) => {
     setSelectedProjectId(project.id);
@@ -48,7 +49,7 @@ export function Sprint2App() {
       // Handle parent_id separately if undefined (meaning "no parent")
       if (data.parent_id === undefined) {
         // Use itemsAPI.update directly with type assertion for null
-        await itemsAPI.update(editingItem.id, { parent_id: null } as Partial<Item>);
+        await itemsAPI.update(editingItem.id, { parent_id: null } as unknown as Partial<Item>);
       }
       
       // Update the rest of the item data
@@ -68,7 +69,7 @@ export function Sprint2App() {
       moveNode(items, movedId, newParentId);
       
       // Update database with type assertion for null values
-      await itemsAPI.update(movedId, { parent_id: newParentId } as Partial<Item>);
+      await itemsAPI.update(movedId, { parent_id: newParentId } as unknown as Partial<Item>);
 
       await refresh();
     } catch (error) {
@@ -82,9 +83,9 @@ export function Sprint2App() {
     setEditingItem(item);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (item: Item) => {
     if (confirm('Are you sure you want to delete this item?')) {
-      await deleteItem(id);
+      await deleteItem(item.id);
       setSelectedItemId(null);
     }
   };
@@ -105,7 +106,7 @@ export function Sprint2App() {
     <div className="min-h-screen bg-gray-50">
       <Header
         projects={projects}
-        selectedProjectId={selectedProjectId}
+        selectedProject={selectedProject}
         onSelectProject={handleSelectProject}
         onNewProject={() => setShowProjectForm(true)}
         onLogout={handleLogout}
@@ -150,12 +151,17 @@ export function Sprint2App() {
               </div>
 
               <div>
-                {selectedItem && (
-                  <ItemPanel
+                {selectedItem ? (
+                  <ItemDetail
                     item={selectedItem}
+                    onClose={() => setSelectedItemId(null)}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                   />
+                ) : (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+                    Select an item to view details
+                  </div>
                 )}
               </div>
             </div>
