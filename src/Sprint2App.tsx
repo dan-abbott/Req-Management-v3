@@ -1,6 +1,8 @@
 // Sprint2App - Complete TypeScript fix for parent_id handling
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from './components/auth/AuthProvider';
+import { LoginPage } from './components/auth/LoginPage';
 import { Header } from './components/layout/Header';
 import { ItemTree } from './components/items/ItemTree';
 import { ItemDetail } from './components/items/ItemDetail';
@@ -13,6 +15,8 @@ import { moveNode } from './utils/treeHelpers';
 import { itemsAPI } from './services/api/items';
 
 export function Sprint2App() {
+  const { user, loading: authLoading } = useAuth();
+  
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -24,6 +28,23 @@ export function Sprint2App() {
 
   const selectedItem = items.find(item => item.id === selectedItemId) || null;
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
+
+  // Authentication loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3FB95A] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <LoginPage />;
+  }
 
   const handleSelectProject = (project: Project) => {
     setSelectedProjectId(project.id);

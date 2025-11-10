@@ -5,11 +5,11 @@ import { createRoot } from 'react-dom/client'
 import { Sprint2App } from './Sprint2App'
 import { AuthProvider } from './components/auth/AuthProvider'
 import './index.css'
+import App from './App.tsx'  // Should be App, not Sprint2App
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AuthProvider>
-      <Sprint2App />
-    </AuthProvider>
-  </StrictMode>,
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />  // ← This is correct
+  </React.StrictMode>
 )
+
