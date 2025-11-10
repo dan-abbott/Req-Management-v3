@@ -10,7 +10,9 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  DragOverEvent
+  DragOverEvent,
+  CollisionDetection,
+  rectIntersection
 } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
 import { TreeNode, buildTree, shouldExpandToLevel } from '../../utils/treeHelpers';
@@ -36,6 +38,22 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     id: 'root-drop-zone',
     data: { isRoot: true }
   });
+
+  // Custom collision detection that prioritizes root zone
+  const customCollisionDetection: CollisionDetection = (args) => {
+    // First check if pointer is over root drop zone
+    const pointerCollisions = pointerWithin(args);
+    const rootZoneCollision = pointerCollisions.find(
+      collision => collision.id === 'root-drop-zone'
+    );
+    
+    if (rootZoneCollision) {
+      return [rootZoneCollision];
+    }
+    
+    // Otherwise use rect intersection for tree items
+    return rectIntersection(args);
+  };
 
   // Auto-expand all nodes on initial load
   useEffect(() => {
@@ -87,7 +105,10 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
   // CRITICAL: Track when hovering over root zone
   const handleDragOver = (event: DragOverEvent) => {
+    console.log('DragOver event:', event.over?.id, event.over?.data);
+    
     if (event.over?.id === 'root-drop-zone') {
+      console.log('✅ Over root drop zone!');
       setIsOverRoot(true);
     } else {
       setIsOverRoot(false);
@@ -196,7 +217,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={customCollisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -205,14 +226,18 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
         <div
           ref={setRootDropRef}
           className={`
-            mb-6 p-6 rounded-lg border-2 border-dashed text-center transition-all font-medium
+            mb-8 p-8 rounded-lg border-2 border-dashed text-center transition-all font-medium
+            pointer-events-auto cursor-pointer
             ${isOverRoot 
-              ? 'border-[#3FB95A] bg-[#3FB95A] bg-opacity-10 text-[#3FB95A]' 
-              : 'border-gray-300 bg-gray-50 text-gray-500'
+              ? 'border-[#3FB95A] bg-[#3FB95A] bg-opacity-20 text-[#3FB95A] shadow-lg' 
+              : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400'
             }
           `}
+          style={{ minHeight: '80px' }}
         >
-          {isOverRoot ? '⬇ Drop here to move to root level (un-nest)' : 'Drop here to move item to root level'}
+          <div className="text-lg">
+            {isOverRoot ? '⬇ Drop here to move to root level (un-nest)' : '↓ Drop here to move item to root level'}
+          </div>
         </div>
 
         {/* TREE */}
