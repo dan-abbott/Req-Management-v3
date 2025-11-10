@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
@@ -196,7 +196,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -205,7 +205,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
         <div
           ref={setRootDropRef}
           className={`
-            mb-4 p-4 rounded-lg border-2 border-dashed text-center transition-all
+            mb-6 p-6 rounded-lg border-2 border-dashed text-center transition-all font-medium
             ${isOverRoot 
               ? 'border-[#3FB95A] bg-[#3FB95A] bg-opacity-10 text-[#3FB95A]' 
               : 'border-gray-300 bg-gray-50 text-gray-500'
