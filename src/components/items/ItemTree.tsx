@@ -14,11 +14,11 @@ import {
   CollisionDetection,
   rectIntersection
 } from '@dnd-kit/core';
-import { useDroppable } from '@dnd-kit/core';
 import { TreeNode, buildTree, shouldExpandToLevel } from '../../utils/treeHelpers';
 import { Item, RequirementLevel } from '../../types';
 import { TreeControls } from './TreeControls';
 import { DroppableItemNode } from './DroppableItemNode';
+import { RootDropZone } from './RootDropZone';
 
 interface ItemTreeProps {
   items: Item[];
@@ -32,12 +32,6 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [activeId, setActiveId] = useState<number | null>(null);
   const [isOverRoot, setIsOverRoot] = useState(false);
-
-  // Root level drop zone
-  const { setNodeRef: setRootDropRef } = useDroppable({
-    id: 'root-drop-zone',
-    data: { isRoot: true }
-  });
 
   // Custom collision detection that prioritizes root zone
   const customCollisionDetection: CollisionDetection = (args) => {
@@ -223,22 +217,7 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
         onDragEnd={handleDragEnd}
       >
         {/* ROOT DROP ZONE */}
-        <div
-          ref={setRootDropRef}
-          className={`
-            mb-8 p-8 rounded-lg border-2 border-dashed text-center transition-all font-medium
-            pointer-events-auto cursor-pointer
-            ${isOverRoot 
-              ? 'border-[#3FB95A] bg-[#3FB95A] bg-opacity-20 text-[#3FB95A] shadow-lg' 
-              : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400'
-            }
-          `}
-          style={{ minHeight: '80px' }}
-        >
-          <div className="text-lg">
-            {isOverRoot ? '⬇ Drop here to move to root level (un-nest)' : '↓ Drop here to move item to root level'}
-          </div>
-        </div>
+        <RootDropZone isOver={isOverRoot} />
 
         {/* TREE */}
         <div className="space-y-1">
