@@ -1,6 +1,6 @@
 // Sprint2App - Complete TypeScript fix for parent_id handling
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
 import { LoginPage } from './components/auth/LoginPage';
 import { Header } from './components/layout/Header';
