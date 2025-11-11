@@ -1,186 +1,153 @@
-// Filter Bar Component (FINAL CORRECTED - matches actual ItemStatus type)
-
-import { Filter, X } from 'lucide-react';
 import { ItemType, ItemStatus, Priority } from '../../types';
+import { ITEM_TYPES, STATUS_OPTIONS, PRIORITY_OPTIONS } from '../../utils/constants';
 
 interface FilterBarProps {
   selectedTypes: ItemType[];
+  onTypesChange: (types: ItemType[]) => void;
   selectedStatuses: ItemStatus[];
+  onStatusesChange: (statuses: ItemStatus[]) => void;
   selectedPriorities: Priority[];
-  onTypeChange: (types: ItemType[]) => void;
-  onStatusChange: (statuses: ItemStatus[]) => void;
-  onPriorityChange: (priorities: Priority[]) => void;
-  onClearAll: () => void;
+  onPrioritiesChange: (priorities: Priority[]) => void;
+  onClearFilters: () => void;
 }
 
-const ITEM_TYPES: ItemType[] = ['epic', 'requirement', 'test-case', 'defect'];
-
-const ITEM_TYPE_LABELS: Record<ItemType, string> = {
-  'epic': 'Epic',
-  'requirement': 'Requirement',
-  'test-case': 'Test Case',
-  'defect': 'Defect'
-};
-
-// Match actual ItemStatus type from types.ts
-const ITEM_STATUSES: Record<ItemType, ItemStatus[]> = {
-  'epic': ['draft', 'not-started', 'in-process', 'backlog'],
-  'requirement': ['draft', 'in-review', 'approved', 'rejected'],
-  'test-case': ['draft', 'ready-for-test', 'passed', 'failed'],
-  'defect': ['draft', 'not-started', 'in-process', 'resolved', 'backlog']
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  'draft': 'Draft',
-  'in-review': 'In Review',
-  'approved': 'Approved',
-  'rejected': 'Rejected',
-  'ready-for-test': 'Ready for Test',
-  'passed': 'Passed',
-  'failed': 'Failed',
-  'not-started': 'Not Started',
-  'in-process': 'In Process',
-  'resolved': 'Resolved',
-  'backlog': 'Backlog'
-};
-
-const ITEM_PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical'];
-
-const PRIORITY_LABELS: Record<Priority, string> = {
-  'low': 'Low',
-  'medium': 'Medium',
-  'high': 'High',
-  'critical': 'Critical'
-};
-
-export function FilterBar({
+export default function FilterBar({
   selectedTypes,
+  onTypesChange,
   selectedStatuses,
+  onStatusesChange,
   selectedPriorities,
-  onTypeChange,
-  onStatusChange,
-  onPriorityChange,
-  onClearAll
+  onPrioritiesChange,
+  onClearFilters
 }: FilterBarProps) {
-  const hasFilters = selectedTypes.length > 0 || selectedStatuses.length > 0 || selectedPriorities.length > 0;
-
   // Get available statuses based on selected types
-  const availableStatuses = selectedTypes.length > 0
-    ? Array.from(new Set(selectedTypes.flatMap(type => ITEM_STATUSES[type])))
-    : Object.values(ITEM_STATUSES).flat();
+  const availableStatuses = () => {
+    if (selectedTypes.length === 0) {
+      // Show all unique statuses
+      const allStatuses = new Set<ItemStatus>();
+      Object.values(STATUS_OPTIONS).forEach(options => {
+        options.forEach(opt => allStatuses.add(opt.value));
+      });
+      return Array.from(allStatuses).map(value => ({
+        value,
+        label: STATUS_OPTIONS.epic.find(s => s.value === value)?.label ||
+               STATUS_OPTIONS.requirement.find(s => s.value === value)?.label ||
+               STATUS_OPTIONS['test-case'].find(s => s.value === value)?.label ||
+               STATUS_OPTIONS.defect.find(s => s.value === value)?.label ||
+               value
+      }));
+    }
+
+    // Show statuses for selected types
+    const statuses = new Set<ItemStatus>();
+    selectedTypes.forEach(type => {
+      STATUS_OPTIONS[type].forEach(opt => statuses.add(opt.value));
+    });
+    return Array.from(statuses).map(value => ({
+      value,
+      label: STATUS_OPTIONS[selectedTypes[0]].find(s => s.value === value)?.label || value
+    }));
+  };
 
   const toggleType = (type: ItemType) => {
     if (selectedTypes.includes(type)) {
-      onTypeChange(selectedTypes.filter(t => t !== type));
+      onTypesChange(selectedTypes.filter(t => t !== type));
     } else {
-      onTypeChange([...selectedTypes, type]);
+      onTypesChange([...selectedTypes, type]);
     }
   };
 
   const toggleStatus = (status: ItemStatus) => {
     if (selectedStatuses.includes(status)) {
-      onStatusChange(selectedStatuses.filter(s => s !== status));
+      onStatusesChange(selectedStatuses.filter(s => s !== status));
     } else {
-      onStatusChange([...selectedStatuses, status]);
+      onStatusesChange([...selectedStatuses, status]);
     }
   };
 
   const togglePriority = (priority: Priority) => {
     if (selectedPriorities.includes(priority)) {
-      onPriorityChange(selectedPriorities.filter(p => p !== priority));
+      onPrioritiesChange(selectedPriorities.filter(p => p !== priority));
     } else {
-      onPriorityChange([...selectedPriorities, priority]);
+      onPrioritiesChange([...selectedPriorities, priority]);
     }
   };
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-          <Filter className="w-4 h-4" />
-          Filters
-        </div>
-        {hasFilters && (
-          <button
-            onClick={onClearAll}
-            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-          >
-            <X className="w-3 h-3" />
-            Clear all
-          </button>
-        )}
-      </div>
+  const hasActiveFilters = selectedTypes.length > 0 || 
+                           selectedStatuses.length > 0 || 
+                           selectedPriorities.length > 0;
 
-      {/* Type Filter */}
+  return (
+    <div className="space-y-3">
+      {/* Type Filters */}
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-2 block">Type</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="text-xs font-medium text-gray-700 mb-1">Type</div>
+        <div className="flex flex-wrap gap-1">
           {ITEM_TYPES.map(type => (
             <button
-              key={type}
-              onClick={() => toggleType(type)}
-              className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                selectedTypes.includes(type)
-                  ? 'bg-fresh-green text-white'
+              key={type.value}
+              onClick={() => toggleType(type.value)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedTypes.includes(type.value)
+                  ? 'bg-fresh-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {ITEM_TYPE_LABELS[type]}
+              {type.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Status Filter */}
+      {/* Status Filters */}
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-2 block">
-          Status {selectedTypes.length > 0 && <span className="text-gray-400">(for selected types)</span>}
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {availableStatuses.map(status => (
+        <div className="text-xs font-medium text-gray-700 mb-1">Status</div>
+        <div className="flex flex-wrap gap-1">
+          {availableStatuses().map(status => (
             <button
-              key={status}
-              onClick={() => toggleStatus(status)}
-              className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                selectedStatuses.includes(status)
-                  ? 'bg-fresh-green text-white'
+              key={status.value}
+              onClick={() => toggleStatus(status.value)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedStatuses.includes(status.value)
+                  ? 'bg-fresh-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {STATUS_LABELS[status] || status}
+              {status.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Priority Filter */}
+      {/* Priority Filters */}
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-2 block">Priority</label>
-        <div className="flex flex-wrap gap-2">
-          {ITEM_PRIORITIES.map(priority => {
-            const colors: Record<Priority, string> = {
-              'low': 'bg-gray-100 text-gray-700',
-              'medium': 'bg-blue-100 text-blue-700',
-              'high': 'bg-orange-100 text-orange-700',
-              'critical': 'bg-red-100 text-red-700'
-            };
-            
-            return (
-              <button
-                key={priority}
-                onClick={() => togglePriority(priority)}
-                className={`px-3 py-1 text-xs rounded-full transition-all ${
-                  selectedPriorities.includes(priority)
-                    ? 'bg-fresh-green text-white ring-2 ring-fresh-green ring-offset-1'
-                    : `${colors[priority]} hover:opacity-75`
-                }`}
-              >
-                {PRIORITY_LABELS[priority]}
-              </button>
-            );
-          })}
+        <div className="text-xs font-medium text-gray-700 mb-1">Priority</div>
+        <div className="flex flex-wrap gap-1">
+          {PRIORITY_OPTIONS.map(priority => (
+            <button
+              key={priority.value}
+              onClick={() => togglePriority(priority.value)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedPriorities.includes(priority.value)
+                  ? 'bg-fresh-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {priority.label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Clear Filters Button */}
+      {hasActiveFilters && (
+        <button
+          onClick={onClearFilters}
+          className="w-full text-xs text-gray-600 hover:text-gray-800 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+        >
+          Clear All Filters
+        </button>
+      )}
     </div>
   );
 }

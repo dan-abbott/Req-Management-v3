@@ -1,280 +1,278 @@
-// Sprint 3 App - FINAL CORRECTED VERSION
-// Uses TreeNode (not Item) after buildTree(), correct status types
-
-import { useEffect, useState } from 'react';
-import { useAuth } from './components/auth/AuthProvider';
-import { LoginPage } from './components/auth/LoginPage';
-import { Header } from './components/layout/Header';
-import { ProjectForm } from './components/projects/ProjectForm';
-import { ItemForm } from './components/items/ItemForm';
-import { ItemDetail } from './components/items/ItemDetail';
-import { ItemTree } from './components/items/ItemTree';
-import { SearchBar } from './components/items/SearchBar';
-import { FilterBar } from './components/items/FilterBar';
-import { DeleteConfirmation } from './components/items/DeleteConfirmation';
+import { useState, useEffect } from 'react';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
+import { Project, Item, ItemType, ItemStatus, Priority, ItemFormData } from './types';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
-import { Project, ItemFormData, ItemType, ItemStatus, Priority } from './types';
-import { TreeNode, buildTree, moveNode as moveNodeHelper } from './utils/treeHelpers';
-import { itemsAPI } from './services/api/items';
-import { filterBySearch, filterByAttributes, countNodes, incrementVersion, shouldResetToDraft } from './utils/filterHelpers';
-import { Plus, FolderOpen } from 'lucide-react';
+import { itemsAPI } from './services/api';
+import Header from './components/layout/Header';
+import ProjectSelector from './components/projects/ProjectSelector';
+import ItemTree from './components/items/ItemTree';
+import ItemForm from './components/items/ItemForm';
+import ItemDetail from './components/items/ItemDetail';
+import LoginPage from './pages/LoginPage';
+import SearchBar from './components/items/SearchBar';
+import FilterBar from './components/items/FilterBar';
+import DeleteConfirmation from './components/items/DeleteConfirmation';
 
-export function Sprint3App() {
-  const { user } = useAuth();
-  const { projects, loading: projectsLoading, createProject } = useProjects();
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { items, loading: itemsLoading, refresh } = useItems(selectedProject?.id || null);
-  
-  // UI State
-  const [showProjectForm, setShowProjectForm] = useState(false);
-  const [showItemForm, setShowItemForm] = useState(false);
+function Sprint3App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [editingItem, setEditingItem] = useState<TreeNode | null>(null);
-  const [deletingItem, setDeletingItem] = useState<TreeNode | null>(null);
-  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
-
-  // Search & Filter State
+  const [showItemForm, setShowItemForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+  
+  // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<ItemType[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<ItemStatus[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
 
+  const { projects, addProject } = useProjects();
+  const { items, addItem, updateItem, deleteItem, refreshItems } = useItems(selectedProjectId);
+
+  // Auth
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Auto-select first project
   useEffect(() => {
-    if (projects.length > 0 && !selectedProject) {
-      setSelectedProject(projects[0]);
+    if (projects.length > 0 && !selectedProjectId) {
+      setSelectedProjectId(projects[0].id);
     }
-  }, [projects, selectedProject]);
+  }, [projects, selectedProjectId]);
 
-  // Build tree from flat items
-  const tree = buildTree(items);
-  
-  // Apply filters and search
-  const filteredTree = (() => {
-    let filtered = tree;
-    
-    // Apply attribute filters first
-    filtered = filterByAttributes(filtered, selectedTypes, selectedStatuses, selectedPriorities);
-    
-    // Then apply search
-    filtered = filterBySearch(filtered, searchQuery);
-    
-    return filtered;
-  })();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
-  const totalCount = countNodes(tree);
-  const filteredCount = countNodes(filteredTree);
-
-  const selectedItem = selectedItemId
-    ? findItemById(tree, selectedItemId)
-    : null;
-
-  if (!user) {
+  if (!session) {
     return <LoginPage />;
   }
 
-  // Handlers
-  const handleProjectSubmit = async (data: { name: string; pid: string; project_manager?: string; lead_engineer?: string }) => {
-    await createProject(data);
-    setShowProjectForm(false);
-  };
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
 
-  const handleCreateItem = async (data: ItemFormData) => {
-    if (!selectedProject) return;
-
-    await itemsAPI.create(data, selectedProject.id);
-    await refresh();
-    setShowItemForm(false);
-  };
-
-  const handleUpdateItem = async (data: ItemFormData) => {
-    if (!editingItem) return;
-
-    // Increment version
-    const newVersion = incrementVersion(editingItem.version);
-
-    // Reset status if editing approved/passed item
-    let newStatus = data.status;
-    if (shouldResetToDraft(editingItem.status)) {
-      newStatus = 'draft';
+  // Filter items
+  const filteredItems = items.filter(item => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesTitle = item.title.toLowerCase().includes(query);
+      const matchesDescription = item.description?.toLowerCase().includes(query);
+      if (!matchesTitle && !matchesDescription) return false;
     }
 
-    await itemsAPI.update(editingItem.id, {
-      ...data,
-      version: newVersion,
-      status: newStatus,
-    });
-    
-    await refresh();
-    setEditingItem(null);
+    // Type filter
+    if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) {
+      return false;
+    }
+
+    // Status filter
+    if (selectedStatuses.length > 0 && !selectedStatuses.includes(item.status)) {
+      return false;
+    }
+
+    // Priority filter
+    if (selectedPriorities.length > 0) {
+      if (!item.priority || !selectedPriorities.includes(item.priority)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const handleSaveItem = async (formData: ItemFormData) => {
+    if (!selectedProjectId) return;
+
+    try {
+      if (editingItem) {
+        // Increment version
+        const newVersion = editingItem.version + 1;
+        
+        // Reset status to draft if item was approved
+        const newStatus = editingItem.status === 'approved' ? 'draft' : formData.status;
+
+        await updateItem(editingItem.id, {
+          ...formData,
+          version: newVersion,
+          status: newStatus
+        } as Partial<Item>);
+      } else {
+        await addItem({
+          ...formData,
+          project_id: selectedProjectId
+        });
+      }
+      
+      setShowItemForm(false);
+      setEditingItem(null);
+      await refreshItems();
+    } catch (error) {
+      console.error('Error saving item:', error);
+    }
   };
 
-  const handleEdit = (item: TreeNode) => {
+  const handleEditItem = (item: Item) => {
     setEditingItem(item);
-  };
-
-  const handleDelete = (item: TreeNode) => {
-    setDeletingItem(item);
-  };
-
-  const confirmDelete = async () => {
-    if (!deletingItem) return;
-
-    await itemsAPI.delete(deletingItem.id);
-    await refresh();
-    setDeletingItem(null);
+    setShowItemForm(true);
     setSelectedItemId(null);
   };
 
-  const handleMoveItem = async (nodeId: number, newParentId: number | null) => {
+  const handleDeleteClick = (item: Item) => {
+    setItemToDelete(item);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
     try {
-      // Update in database
-      await itemsAPI.update(nodeId, { parent_id: newParentId || undefined });
-      await refresh();
+      await deleteItem(itemToDelete.id);
+      setItemToDelete(null);
+      setSelectedItemId(null);
+      await refreshItems();
     } catch (error) {
-      console.error('Failed to move item:', error);
-      throw error;
+      console.error('Error deleting item:', error);
+    }
+  };
+
+  const handleItemMove = async (itemId: number, newParentId: number | null) => {
+    try {
+      await itemsAPI.update(itemId, { 
+        parent_id: newParentId 
+      } as Partial<Item>);
+      await refreshItems();
+    } catch (error) {
+      console.error('Error moving item:', error);
     }
   };
 
   const handleClearFilters = () => {
+    setSearchQuery('');
     setSelectedTypes([]);
     setSelectedStatuses([]);
     setSelectedPriorities([]);
-    setSearchQuery('');
   };
+
+  const selectedItem = items.find(item => item.id === selectedItemId);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
-        projects={projects}
+        user={session.user}
         selectedProject={selectedProject}
-        onSelectProject={setSelectedProject}
-        onNewProject={() => setShowProjectForm(true)}
+        onProjectChange={setSelectedProjectId}
       />
-      
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {selectedProject && (
-          <>
-            {/* Actions */}
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowItemForm(true)}
-                className="px-4 py-2 bg-fresh-green text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                New Item
-              </button>
-            </div>
+
+      <div className="flex h-[calc(100vh-64px)]">
+        {/* Left Panel - Tree View */}
+        <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+          {/* Toolbar */}
+          <div className="p-4 border-b border-gray-200 space-y-3">
+            <button
+              onClick={() => {
+                setShowItemForm(true);
+                setEditingItem(null);
+              }}
+              disabled={!selectedProjectId}
+              className="w-full bg-fresh-500 text-white px-4 py-2 rounded hover:bg-fresh-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              + New Item
+            </button>
 
             {/* Search Bar */}
             <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              itemCount={filteredCount}
-              totalCount={totalCount}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              itemCount={filteredItems.length}
             />
 
             {/* Filter Bar */}
             <FilterBar
               selectedTypes={selectedTypes}
+              onTypesChange={setSelectedTypes}
               selectedStatuses={selectedStatuses}
+              onStatusesChange={setSelectedStatuses}
               selectedPriorities={selectedPriorities}
-              onTypeChange={setSelectedTypes}
-              onStatusChange={setSelectedStatuses}
-              onPriorityChange={setSelectedPriorities}
-              onClearAll={handleClearFilters}
+              onPrioritiesChange={setSelectedPriorities}
+              onClearFilters={handleClearFilters}
             />
+          </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-2 gap-6">
-              {/* Tree View */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Items</h2>
-                {itemsLoading ? (
-                  <div className="text-gray-500 text-center py-8">Loading items...</div>
-                ) : filteredTree.length === 0 ? (
-                  <div className="text-gray-500 text-center py-8">
-                    {tree.length === 0 ? (
-                      'No items yet. Create your first item!'
-                    ) : (
-                      'No items match your filters.'
-                    )}
-                  </div>
-                ) : (
-                  <ItemTree
-                    items={items}
-                    selectedId={selectedItemId}
-                    onSelect={setSelectedItemId}
-                    onMove={handleMoveItem}
-                  />
-                )}
+          {/* Tree View */}
+          <div className="flex-1 overflow-auto p-4">
+            {selectedProjectId ? (
+              <ItemTree
+                items={filteredItems}
+                selectedItemId={selectedItemId}
+                onItemSelect={setSelectedItemId}
+                onItemMove={handleItemMove}
+              />
+            ) : (
+              <div className="text-gray-500 text-center py-8">
+                Select a project to view items
               </div>
+            )}
+          </div>
+        </div>
 
-              {/* Detail Panel */}
-              <div>
-                {selectedItem ? (
-                  <ItemDetail
-                    item={selectedItem}
-                    onClose={() => setSelectedItemId(null)}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ) : (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
-                    Select an item to view details
-                  </div>
-                )}
-              </div>
+        {/* Right Panel - Detail/Form View */}
+        <div className="flex-1 overflow-auto">
+          {showItemForm ? (
+            <div className="p-6">
+              <ItemForm
+                projectId={selectedProjectId!}
+                items={items}
+                editingItem={editingItem}
+                onSave={handleSaveItem}
+                onCancel={() => {
+                  setShowItemForm(false);
+                  setEditingItem(null);
+                }}
+              />
             </div>
-          </>
-        )}
+          ) : selectedItem ? (
+            <ItemDetail
+              item={selectedItem}
+              allItems={items}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteClick}
+              onClose={() => setSelectedItemId(null)}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Select an item to view details
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Modals */}
-      <ProjectForm
-        isOpen={showProjectForm}
-        onClose={() => setShowProjectForm(false)}
-        onSubmit={handleProjectSubmit}
-      />
-
-      <ItemForm
-        isOpen={showItemForm}
-        onClose={() => setShowItemForm(false)}
-        onSubmit={handleCreateItem}
-        availableItems={items}
-      />
-
-      {editingItem && (
-        <ItemForm
-          isOpen={true}
-          onClose={() => setEditingItem(null)}
-          onSubmit={handleUpdateItem}
-          item={editingItem}
-          availableItems={items}
-        />
-      )}
-
-      {deletingItem && (
+      {/* Delete Confirmation Modal */}
+      {itemToDelete && (
         <DeleteConfirmation
-          item={deletingItem}
-          onConfirm={confirmDelete}
-          onCancel={() => setDeletingItem(null)}
+          item={itemToDelete}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setItemToDelete(null)}
         />
       )}
     </div>
   );
 }
 
-// Helper function to find item in tree
-function findItemById(nodes: TreeNode[], id: number): TreeNode | null {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    if (node.children) {
-      const found = findItemById(node.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
+export default Sprint3App;
