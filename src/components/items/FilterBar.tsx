@@ -1,4 +1,4 @@
-// Filter Bar Component (CORRECTED)
+// Filter Bar Component (FINAL CORRECTED - matches actual ItemStatus type)
 
 import { Filter, X } from 'lucide-react';
 import { ItemType, ItemStatus, Priority } from '../../types';
@@ -22,28 +22,26 @@ const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   'defect': 'Defect'
 };
 
+// Match actual ItemStatus type from types.ts
 const ITEM_STATUSES: Record<ItemType, ItemStatus[]> = {
-  'epic': ['draft', 'in-progress', 'completed'],
-  'requirement': ['draft', 'in-review', 'approved', 'implemented'],
-  'test-case': ['draft', 'ready-for-test', 'passed', 'failed', 'blocked'],
-  'defect': ['open', 'in-progress', 'resolved', 'closed', 'reopened']
+  'epic': ['draft', 'not-started', 'in-process', 'backlog'],
+  'requirement': ['draft', 'in-review', 'approved', 'rejected'],
+  'test-case': ['draft', 'ready-for-test', 'passed', 'failed'],
+  'defect': ['draft', 'not-started', 'in-process', 'resolved', 'backlog']
 };
 
 const STATUS_LABELS: Record<string, string> = {
   'draft': 'Draft',
-  'in-progress': 'In Progress',
   'in-review': 'In Review',
   'approved': 'Approved',
-  'implemented': 'Implemented',
+  'rejected': 'Rejected',
   'ready-for-test': 'Ready for Test',
   'passed': 'Passed',
   'failed': 'Failed',
-  'blocked': 'Blocked',
-  'open': 'Open',
+  'not-started': 'Not Started',
+  'in-process': 'In Process',
   'resolved': 'Resolved',
-  'closed': 'Closed',
-  'reopened': 'Reopened',
-  'completed': 'Completed'
+  'backlog': 'Backlog'
 };
 
 const ITEM_PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical'];

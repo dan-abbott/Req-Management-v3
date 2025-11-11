@@ -1,4 +1,5 @@
-// Sprint 3 App - Search, Filters & Enhanced Item Management (CORRECTED)
+// Sprint 3 App - FINAL CORRECTED VERSION
+// Uses TreeNode (not Item) after buildTree(), correct status types
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -13,9 +14,9 @@ import { FilterBar } from './components/items/FilterBar';
 import { DeleteConfirmation } from './components/items/DeleteConfirmation';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
-import { Project, Item, ItemFormData, ItemType, ItemStatus, Priority } from './types';
+import { Project, ItemFormData, ItemType, ItemStatus, Priority } from './types';
+import { TreeNode, buildTree, moveNode as moveNodeHelper } from './utils/treeHelpers';
 import { itemsAPI } from './services/api/items';
-import { moveNode, buildTree } from './utils/treeHelpers';
 import { filterBySearch, filterByAttributes, countNodes, incrementVersion, shouldResetToDraft } from './utils/filterHelpers';
 import { Plus, FolderOpen } from 'lucide-react';
 
@@ -29,8 +30,8 @@ export function Sprint3App() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [deletingItem, setDeletingItem] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<TreeNode | null>(null);
+  const [deletingItem, setDeletingItem] = useState<TreeNode | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
 
   // Search & Filter State
@@ -46,9 +47,10 @@ export function Sprint3App() {
     }
   }, [projects, selectedProject]);
 
-  // Build tree and apply filters
+  // Build tree from flat items
   const tree = buildTree(items);
   
+  // Apply filters and search
   const filteredTree = (() => {
     let filtered = tree;
     
@@ -81,12 +83,7 @@ export function Sprint3App() {
   const handleCreateItem = async (data: ItemFormData) => {
     if (!selectedProject) return;
 
-    await itemsAPI.create({
-      ...data,
-      project_id: selectedProject.id,
-      version: 1
-    });
-    
+    await itemsAPI.create(data, selectedProject.id);
     await refresh();
     setShowItemForm(false);
   };
@@ -113,11 +110,11 @@ export function Sprint3App() {
     setEditingItem(null);
   };
 
-  const handleEdit = (item: Item) => {
+  const handleEdit = (item: TreeNode) => {
     setEditingItem(item);
   };
 
-  const handleDelete = (item: Item) => {
+  const handleDelete = (item: TreeNode) => {
     setDeletingItem(item);
   };
 
@@ -131,10 +128,13 @@ export function Sprint3App() {
   };
 
   const handleMoveItem = async (nodeId: number, newParentId: number | null) => {
-    const updatedTree = moveNode(tree, nodeId, newParentId);
-    if (updatedTree) {
-      await itemsAPI.update(nodeId, { parent_id: newParentId });
+    try {
+      // Update in database
+      await itemsAPI.update(nodeId, { parent_id: newParentId || undefined });
       await refresh();
+    } catch (error) {
+      console.error('Failed to move item:', error);
+      throw error;
     }
   };
 
@@ -147,58 +147,27 @@ export function Sprint3App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header
+        projects={projects}
+        selectedProject={selectedProject}
+        onSelectProject={setSelectedProject}
+        onNewProject={() => setShowProjectForm(true)}
+      />
       
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Project Selection & Actions */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-gray-400" />
-                <select
-                  value={selectedProject?.id || ''}
-                  onChange={(e) => {
-                    const project = projects.find(p => p.id === Number(e.target.value));
-                    setSelectedProject(project || null);
-                  }}
-                  className="text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
-                  disabled={projectsLoading}
-                >
-                  {projects.length === 0 ? (
-                    <option value="">No projects</option>
-                  ) : (
-                    projects.map(project => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowProjectForm(true)}
-                className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                New Project
-              </button>
+        {selectedProject && (
+          <>
+            {/* Actions */}
+            <div className="flex justify-end">
               <button
                 onClick={() => setShowItemForm(true)}
-                disabled={!selectedProject}
-                className="px-4 py-2 bg-fresh-green text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-fresh-green text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 New Item
               </button>
             </div>
-          </div>
-        </div>
 
-        {selectedProject && (
-          <>
             {/* Search Bar */}
             <SearchBar
               value={searchQuery}
@@ -235,12 +204,10 @@ export function Sprint3App() {
                   </div>
                 ) : (
                   <ItemTree
-                    items={filteredTree}
+                    items={items}
                     selectedId={selectedItemId}
                     onSelect={setSelectedItemId}
                     onMove={handleMoveItem}
-                    expandedNodes={expandedNodes}
-                    onExpandedChange={setExpandedNodes}
                   />
                 )}
               </div>
@@ -276,7 +243,7 @@ export function Sprint3App() {
         isOpen={showItemForm}
         onClose={() => setShowItemForm(false)}
         onSubmit={handleCreateItem}
-        availableItems={tree}
+        availableItems={items}
       />
 
       {editingItem && (
@@ -285,7 +252,7 @@ export function Sprint3App() {
           onClose={() => setEditingItem(null)}
           onSubmit={handleUpdateItem}
           item={editingItem}
-          availableItems={tree}
+          availableItems={items}
         />
       )}
 
@@ -301,7 +268,7 @@ export function Sprint3App() {
 }
 
 // Helper function to find item in tree
-function findItemById(nodes: Item[], id: number): Item | null {
+function findItemById(nodes: TreeNode[], id: number): TreeNode | null {
   for (const node of nodes) {
     if (node.id === id) return node;
     if (node.children) {
