@@ -1,62 +1,30 @@
-// ItemTree - Complete with working root drop zone
+// Item Tree Component (Updated for Sprint 3)
 
-import { useState, useMemo, useEffect } from 'react';
-import {
-  DndContext,
-  pointerWithin,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  DragOverEvent,
-  CollisionDetection,
-  rectIntersection
-} from '@dnd-kit/core';
-import { TreeNode, buildTree, shouldExpandToLevel } from '../../utils/treeHelpers';
-import { Item, RequirementLevel } from '../../types';
-import { TreeControls } from './TreeControls';
+import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { TreeNode } from '../../types';
 import { DroppableItemNode } from './DroppableItemNode';
-import { RootDropZone } from './RootDropZone';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 interface ItemTreeProps {
-  items: Item[];
+  items: TreeNode[];
   selectedId: number | null;
   onSelect: (id: number) => void;
-  onMove: (movedId: number, newParentId: number | null) => Promise<void>;
+  onMove: (nodeId: number, newParentId: number | null) => void;
+  expandedNodes: Set<number>;
+  onExpandedChange: (expanded: Set<number>) => void;
 }
 
-export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps) {
-  const tree = useMemo(() => buildTree(items), [items]);
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+export function ItemTree({ 
+  items, 
+  selectedId, 
+  onSelect, 
+  onMove,
+  expandedNodes,
+  onExpandedChange 
+}: ItemTreeProps) {
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [isOverRoot, setIsOverRoot] = useState(false);
-
-  // Custom collision detection that prioritizes root zone
-  const customCollisionDetection: CollisionDetection = (args) => {
-    // First check if pointer is over root drop zone
-    const pointerCollisions = pointerWithin(args);
-    const rootZoneCollision = pointerCollisions.find(
-      collision => collision.id === 'root-drop-zone'
-    );
-    
-    if (rootZoneCollision) {
-      return [rootZoneCollision];
-    }
-    
-    // Otherwise use rect intersection for tree items
-    return rectIntersection(args);
-  };
-
-  // Auto-expand all nodes on initial load
-  useEffect(() => {
-    if (items.length > 0 && expandedIds.size === 0) {
-      const allIds = new Set(items.map(item => item.id));
-      setExpandedIds(allIds);
-    }
-  }, [items.length]);
-
+  
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -65,176 +33,110 @@ export function ItemTree({ items, selectedId, onSelect, onMove }: ItemTreeProps)
     })
   );
 
-  const toggleExpand = (id: number) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const handleDragStart = (event: DragEndEvent) => {
+    setActiveId(event.active.id as number);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      onMove(active.id as number, over.id as number);
+    }
+    
+    setActiveId(null);
+  };
+
+  const handleToggle = (nodeId: number) => {
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(nodeId)) {
+      newExpanded.delete(nodeId);
+    } else {
+      newExpanded.add(nodeId);
+    }
+    onExpandedChange(newExpanded);
+  };
+
+  const handleExpandAll = () => {
+    const allIds = new Set<number>();
+    const collectIds = (nodes: TreeNode[]) => {
+      nodes.forEach(node => {
+        if (node.children.length > 0) {
+          allIds.add(node.id);
+          collectIds(node.children);
+        }
+      });
+    };
+    collectIds(items);
+    onExpandedChange(allIds);
   };
 
   const handleCollapseAll = () => {
-    setExpandedIds(new Set());
+    onExpandedChange(new Set());
   };
 
-  const handleExpandToLevel = (targetLevel: RequirementLevel) => {
-    const idsToExpand = new Set<number>();
-    const traverse = (node: TreeNode) => {
-      if (shouldExpandToLevel(node, targetLevel)) {
-        idsToExpand.add(node.id);
-      }
-      node.children.forEach(traverse);
-    };
-    tree.forEach(traverse);
-    setExpandedIds(idsToExpand);
-  };
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(Number(event.active.id));
-  };
-
-  // CRITICAL: Track when hovering over root zone
-  const handleDragOver = (event: DragOverEvent) => {
-    console.log('DragOver event:', event.over?.id, event.over?.data);
-    
-    if (event.over?.id === 'root-drop-zone') {
-      console.log('✅ Over root drop zone!');
-      setIsOverRoot(true);
-    } else {
-      setIsOverRoot(false);
-    }
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    setActiveId(null);
-    setIsOverRoot(false);
-
-    if (!over) return;
-
-    const movedId = Number(active.id);
-    
-    // Check if dropped on root zone
-    if (over.id === 'root-drop-zone') {
-      try {
-        const savedExpandedIds = new Set(expandedIds);
-        console.log('Moving to root level:', movedId);
-        await onMove(movedId, null);
-        setExpandedIds(savedExpandedIds);
-      } catch (error) {
-        console.error('Failed to move item:', error);
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        alert('Failed to move item. ' + message);
-      }
-      return;
-    }
-
-    // Dropped on another item
-    if (active.id === over.id) return;
-
-    const newParentId = Number(over.id);
-
-    try {
-      const savedExpandedIds = new Set(expandedIds);
-      console.log('Moving to parent:', movedId, '→', newParentId);
-      await onMove(movedId, newParentId);
-      savedExpandedIds.add(newParentId);
-      setExpandedIds(savedExpandedIds);
-    } catch (error) {
-      console.error('Failed to move item:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      alert('Failed to move item. ' + message);
-    }
-  };
-
-  const renderNode = (node: TreeNode) => {
-    const isExpanded = expandedIds.has(node.id);
-    const isSelected = selectedId === node.id;
-    const isBeingDragged = activeId === node.id;
-
-    return (
-      <div key={node.id}>
-        <DroppableItemNode
-          node={node}
-          isExpanded={isExpanded}
-          isSelected={isSelected}
-          isBeingDragged={isBeingDragged}
-          onToggleExpand={toggleExpand}
-          onSelect={onSelect}
-        />
-
-        {isExpanded && node.children.length > 0 && (
-          <div>
-            {node.children.map(child => renderNode(child))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const activeNode = useMemo(() => {
-    if (!activeId) return null;
-    
-    const findNodeById = (nodes: TreeNode[]): TreeNode | null => {
-      for (const node of nodes) {
-        if (node.id === activeId) return node;
-        const found = findNodeById(node.children);
-        if (found) return found;
-      }
-      return null;
-    };
-    
-    return findNodeById(tree);
-  }, [activeId, tree]);
-
-  if (tree.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <div className="text-6xl mb-4">📋</div>
-        <div className="text-lg font-medium">No items yet</div>
-        <div className="text-sm">Create your first item to get started</div>
-      </div>
-    );
-  }
+  const activeItem = activeId ? findNodeById(items, activeId) : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <TreeControls
-        onCollapseAll={handleCollapseAll}
-        onExpandToLevel={handleExpandToLevel}
-      />
+    <div className="space-y-3">
+      {/* Tree Controls */}
+      {items.length > 0 && (
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            onClick={handleExpandAll}
+            className="text-fresh-green hover:text-green-600 font-medium"
+          >
+            Expand All
+          </button>
+          <span className="text-gray-300">|</span>
+          <button
+            onClick={handleCollapseAll}
+            className="text-fresh-green hover:text-green-600 font-medium"
+          >
+            Collapse All
+          </button>
+        </div>
+      )}
 
+      {/* Tree */}
       <DndContext
         sensors={sensors}
-        collisionDetection={customCollisionDetection}
         onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        {/* ROOT DROP ZONE */}
-        <RootDropZone isOver={isOverRoot} />
-
-        {/* TREE */}
         <div className="space-y-1">
-          {tree.map(node => renderNode(node))}
+          {items.map(item => (
+            <DroppableItemNode
+              key={item.id}
+              node={item}
+              level={0}
+              isSelected={item.id === selectedId}
+              isExpanded={expandedNodes.has(item.id)}
+              onSelect={onSelect}
+              onToggle={handleToggle}
+            />
+          ))}
         </div>
 
-        {/* DRAG OVERLAY */}
         <DragOverlay>
-          {activeNode ? (
-            <div className="bg-white shadow-xl rounded-lg border-2 border-[#3FB95A] p-3 opacity-90">
-              <div className="font-medium text-gray-900">
-                #{activeNode.id} - {activeNode.title}
-              </div>
+          {activeItem && (
+            <div className="bg-white border-2 border-fresh-green rounded-lg p-3 shadow-lg opacity-90">
+              <div className="font-medium text-gray-900">{activeItem.title}</div>
+              <div className="text-xs text-gray-500 mt-1">{activeItem.type}</div>
             </div>
-          ) : null}
+          )}
         </DragOverlay>
       </DndContext>
     </div>
   );
+}
+
+// Helper to find node by ID
+function findNodeById(nodes: TreeNode[], id: number): TreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findNodeById(node.children, id);
+    if (found) return found;
+  }
+  return null;
 }
