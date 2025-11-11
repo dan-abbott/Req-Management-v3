@@ -1,28 +1,59 @@
-// Filter Bar Component
+// Filter Bar Component (CORRECTED)
 
 import { Filter, X } from 'lucide-react';
-import { ItemType, ItemStatus, ItemPriority } from '../../types';
+import { ItemType, ItemStatus, Priority } from '../../types';
 
 interface FilterBarProps {
   selectedTypes: ItemType[];
   selectedStatuses: ItemStatus[];
-  selectedPriorities: ItemPriority[];
+  selectedPriorities: Priority[];
   onTypeChange: (types: ItemType[]) => void;
   onStatusChange: (statuses: ItemStatus[]) => void;
-  onPriorityChange: (priorities: ItemPriority[]) => void;
+  onPriorityChange: (priorities: Priority[]) => void;
   onClearAll: () => void;
 }
 
-const ITEM_TYPES: ItemType[] = ['Epic', 'Requirement', 'Test Case', 'Defect'];
+const ITEM_TYPES: ItemType[] = ['epic', 'requirement', 'test-case', 'defect'];
 
-const ITEM_STATUSES: Record<ItemType, ItemStatus[]> = {
-  'Epic': ['Draft', 'In Progress', 'Completed'],
-  'Requirement': ['Draft', 'In Review', 'Approved', 'Implemented'],
-  'Test Case': ['Draft', 'Ready for Test', 'Passed', 'Failed', 'Blocked'],
-  'Defect': ['Open', 'In Progress', 'Resolved', 'Closed', 'Reopened']
+const ITEM_TYPE_LABELS: Record<ItemType, string> = {
+  'epic': 'Epic',
+  'requirement': 'Requirement',
+  'test-case': 'Test Case',
+  'defect': 'Defect'
 };
 
-const ITEM_PRIORITIES: ItemPriority[] = ['Low', 'Medium', 'High', 'Critical'];
+const ITEM_STATUSES: Record<ItemType, ItemStatus[]> = {
+  'epic': ['draft', 'in-progress', 'completed'],
+  'requirement': ['draft', 'in-review', 'approved', 'implemented'],
+  'test-case': ['draft', 'ready-for-test', 'passed', 'failed', 'blocked'],
+  'defect': ['open', 'in-progress', 'resolved', 'closed', 'reopened']
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  'draft': 'Draft',
+  'in-progress': 'In Progress',
+  'in-review': 'In Review',
+  'approved': 'Approved',
+  'implemented': 'Implemented',
+  'ready-for-test': 'Ready for Test',
+  'passed': 'Passed',
+  'failed': 'Failed',
+  'blocked': 'Blocked',
+  'open': 'Open',
+  'resolved': 'Resolved',
+  'closed': 'Closed',
+  'reopened': 'Reopened',
+  'completed': 'Completed'
+};
+
+const ITEM_PRIORITIES: Priority[] = ['low', 'medium', 'high', 'critical'];
+
+const PRIORITY_LABELS: Record<Priority, string> = {
+  'low': 'Low',
+  'medium': 'Medium',
+  'high': 'High',
+  'critical': 'Critical'
+};
 
 export function FilterBar({
   selectedTypes,
@@ -56,7 +87,7 @@ export function FilterBar({
     }
   };
 
-  const togglePriority = (priority: ItemPriority) => {
+  const togglePriority = (priority: Priority) => {
     if (selectedPriorities.includes(priority)) {
       onPriorityChange(selectedPriorities.filter(p => p !== priority));
     } else {
@@ -96,7 +127,7 @@ export function FilterBar({
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {type}
+              {ITEM_TYPE_LABELS[type]}
             </button>
           ))}
         </div>
@@ -118,7 +149,7 @@ export function FilterBar({
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {status}
+              {STATUS_LABELS[status] || status}
             </button>
           ))}
         </div>
@@ -129,11 +160,11 @@ export function FilterBar({
         <label className="text-xs font-medium text-gray-600 mb-2 block">Priority</label>
         <div className="flex flex-wrap gap-2">
           {ITEM_PRIORITIES.map(priority => {
-            const colors = {
-              Low: 'bg-gray-100 text-gray-700',
-              Medium: 'bg-blue-100 text-blue-700',
-              High: 'bg-orange-100 text-orange-700',
-              Critical: 'bg-red-100 text-red-700'
+            const colors: Record<Priority, string> = {
+              'low': 'bg-gray-100 text-gray-700',
+              'medium': 'bg-blue-100 text-blue-700',
+              'high': 'bg-orange-100 text-orange-700',
+              'critical': 'bg-red-100 text-red-700'
             };
             
             return (
@@ -146,7 +177,7 @@ export function FilterBar({
                     : `${colors[priority]} hover:opacity-75`
                 }`}
               >
-                {priority}
+                {PRIORITY_LABELS[priority]}
               </button>
             );
           })}

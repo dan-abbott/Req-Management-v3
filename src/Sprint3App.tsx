@@ -1,4 +1,4 @@
-// Sprint 3 App - Search, Filters & Enhanced Item Management
+// Sprint 3 App - Search, Filters & Enhanced Item Management (CORRECTED)
 
 import { useEffect, useState } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -13,9 +13,9 @@ import { FilterBar } from './components/items/FilterBar';
 import { DeleteConfirmation } from './components/items/DeleteConfirmation';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
-import { Project, Item, ItemFormData, ItemType, ItemStatus, ItemPriority, TreeNode } from './types';
+import { Project, Item, ItemFormData, ItemType, ItemStatus, Priority } from './types';
 import { itemsAPI } from './services/api/items';
-import { moveNode } from './utils/treeHelpers';
+import { moveNode, buildTree } from './utils/treeHelpers';
 import { filterBySearch, filterByAttributes, countNodes, incrementVersion, shouldResetToDraft } from './utils/filterHelpers';
 import { Plus, FolderOpen } from 'lucide-react';
 
@@ -23,7 +23,7 @@ export function Sprint3App() {
   const { user } = useAuth();
   const { projects, loading: projectsLoading, createProject } = useProjects();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { items, loading: itemsLoading, refreshItems } = useItems(selectedProject?.id || null);
+  const { items, loading: itemsLoading, refresh } = useItems(selectedProject?.id || null);
   
   // UI State
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -37,7 +37,7 @@ export function Sprint3App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<ItemType[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<ItemStatus[]>([]);
-  const [selectedPriorities, setSelectedPriorities] = useState<ItemPriority[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
 
   // Auto-select first project
   useEffect(() => {
@@ -46,9 +46,11 @@ export function Sprint3App() {
     }
   }, [projects, selectedProject]);
 
-  // Apply filters and search
-  const filteredItems = (() => {
-    let filtered = items;
+  // Build tree and apply filters
+  const tree = buildTree(items);
+  
+  const filteredTree = (() => {
+    let filtered = tree;
     
     // Apply attribute filters first
     filtered = filterByAttributes(filtered, selectedTypes, selectedStatuses, selectedPriorities);
@@ -59,11 +61,11 @@ export function Sprint3App() {
     return filtered;
   })();
 
-  const totalCount = countNodes(items);
-  const filteredCount = countNodes(filteredItems);
+  const totalCount = countNodes(tree);
+  const filteredCount = countNodes(filteredTree);
 
   const selectedItem = selectedItemId
-    ? findItemById(items, selectedItemId)
+    ? findItemById(tree, selectedItemId)
     : null;
 
   if (!user) {
@@ -71,7 +73,7 @@ export function Sprint3App() {
   }
 
   // Handlers
-  const handleProjectSubmit = async (data: Partial<Project>) => {
+  const handleProjectSubmit = async (data: { name: string; pid: string; project_manager?: string; lead_engineer?: string }) => {
     await createProject(data);
     setShowProjectForm(false);
   };
@@ -79,15 +81,13 @@ export function Sprint3App() {
   const handleCreateItem = async (data: ItemFormData) => {
     if (!selectedProject) return;
 
-    const newItem = {
+    await itemsAPI.create({
       ...data,
       project_id: selectedProject.id,
-      version: '1.0',
-      created_by: user.email,
-    };
-
-    await itemsAPI.create(newItem as Partial<Item>);
-    await refreshItems();
+      version: 1
+    });
+    
+    await refresh();
     setShowItemForm(false);
   };
 
@@ -100,17 +100,16 @@ export function Sprint3App() {
     // Reset status if editing approved/passed item
     let newStatus = data.status;
     if (shouldResetToDraft(editingItem.status)) {
-      newStatus = 'Draft';
+      newStatus = 'draft';
     }
 
-    const updates = {
+    await itemsAPI.update(editingItem.id, {
       ...data,
       version: newVersion,
       status: newStatus,
-    } as Partial<Item>;
-
-    await itemsAPI.update(editingItem.id, updates);
-    await refreshItems();
+    });
+    
+    await refresh();
     setEditingItem(null);
   };
 
@@ -126,16 +125,16 @@ export function Sprint3App() {
     if (!deletingItem) return;
 
     await itemsAPI.delete(deletingItem.id);
-    await refreshItems();
+    await refresh();
     setDeletingItem(null);
     setSelectedItemId(null);
   };
 
   const handleMoveItem = async (nodeId: number, newParentId: number | null) => {
-    const updatedTree = moveNode(items, nodeId, newParentId);
+    const updatedTree = moveNode(tree, nodeId, newParentId);
     if (updatedTree) {
-      await itemsAPI.update(nodeId, { parent_id: newParentId } as Partial<Item>);
-      await refreshItems();
+      await itemsAPI.update(nodeId, { parent_id: newParentId });
+      await refresh();
     }
   };
 
@@ -148,7 +147,7 @@ export function Sprint3App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header />
       
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Project Selection & Actions */}
@@ -226,9 +225,9 @@ export function Sprint3App() {
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Items</h2>
                 {itemsLoading ? (
                   <div className="text-gray-500 text-center py-8">Loading items...</div>
-                ) : filteredItems.length === 0 ? (
+                ) : filteredTree.length === 0 ? (
                   <div className="text-gray-500 text-center py-8">
-                    {items.length === 0 ? (
+                    {tree.length === 0 ? (
                       'No items yet. Create your first item!'
                     ) : (
                       'No items match your filters.'
@@ -236,7 +235,7 @@ export function Sprint3App() {
                   </div>
                 ) : (
                   <ItemTree
-                    items={filteredItems}
+                    items={filteredTree}
                     selectedId={selectedItemId}
                     onSelect={setSelectedItemId}
                     onMove={handleMoveItem}
@@ -277,7 +276,7 @@ export function Sprint3App() {
         isOpen={showItemForm}
         onClose={() => setShowItemForm(false)}
         onSubmit={handleCreateItem}
-        availableItems={items}
+        availableItems={tree}
       />
 
       {editingItem && (
@@ -286,7 +285,7 @@ export function Sprint3App() {
           onClose={() => setEditingItem(null)}
           onSubmit={handleUpdateItem}
           item={editingItem}
-          availableItems={items}
+          availableItems={tree}
         />
       )}
 
@@ -302,11 +301,13 @@ export function Sprint3App() {
 }
 
 // Helper function to find item in tree
-function findItemById(nodes: TreeNode[], id: number): Item | null {
+function findItemById(nodes: Item[], id: number): Item | null {
   for (const node of nodes) {
-    if (node.id === id) return node as Item;
-    const found = findItemById(node.children, id);
-    if (found) return found;
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findItemById(node.children, id);
+      if (found) return found;
+    }
   }
   return null;
 }

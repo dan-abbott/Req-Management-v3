@@ -1,13 +1,12 @@
-// Item Tree Component (Updated for Sprint 3)
+// Item Tree Component (CORRECTED for Sprint 3)
 
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { TreeNode } from '../../types';
+import { Item } from '../../types';
 import { DroppableItemNode } from './DroppableItemNode';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 interface ItemTreeProps {
-  items: TreeNode[];
+  items: Item[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onMove: (nodeId: number, newParentId: number | null) => void;
@@ -59,9 +58,9 @@ export function ItemTree({
 
   const handleExpandAll = () => {
     const allIds = new Set<number>();
-    const collectIds = (nodes: TreeNode[]) => {
+    const collectIds = (nodes: Item[]) => {
       nodes.forEach(node => {
-        if (node.children.length > 0) {
+        if (node.children && node.children.length > 0) {
           allIds.add(node.id);
           collectIds(node.children);
         }
@@ -109,7 +108,6 @@ export function ItemTree({
             <DroppableItemNode
               key={item.id}
               node={item}
-              level={0}
               isSelected={item.id === selectedId}
               isExpanded={expandedNodes.has(item.id)}
               onSelect={onSelect}
@@ -132,11 +130,13 @@ export function ItemTree({
 }
 
 // Helper to find node by ID
-function findNodeById(nodes: TreeNode[], id: number): TreeNode | null {
+function findNodeById(nodes: Item[], id: number): Item | null {
   for (const node of nodes) {
     if (node.id === id) return node;
-    const found = findNodeById(node.children, id);
-    if (found) return found;
+    if (node.children) {
+      const found = findNodeById(node.children, id);
+      if (found) return found;
+    }
   }
   return null;
 }

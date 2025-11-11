@@ -1,25 +1,26 @@
-// Filter and Search Utilities
+// Filter and Search Utilities (CORRECTED)
 
-import { TreeNode } from '../types';
-import { ItemType, ItemStatus, ItemPriority } from '../types';
+import { Item, ItemType, ItemStatus, Priority } from '../types';
 
 /**
  * Filter tree nodes based on search query
  * Preserves parent nodes to maintain tree structure
  */
-export function filterBySearch(nodes: TreeNode[], query: string): TreeNode[] {
+export function filterBySearch(nodes: Item[], query: string): Item[] {
   if (!query.trim()) return nodes;
 
   const lowerQuery = query.toLowerCase();
 
-  const filterNode = (node: TreeNode): TreeNode | null => {
+  const filterNode = (node: Item): Item | null => {
     const matchesSearch = 
       node.title.toLowerCase().includes(lowerQuery) ||
       node.description?.toLowerCase().includes(lowerQuery);
 
     const filteredChildren = node.children
-      .map(filterNode)
-      .filter((n): n is TreeNode => n !== null);
+      ? node.children
+          .map(filterNode)
+          .filter((n): n is Item => n !== null)
+      : [];
 
     // Include node if it matches OR if any children match
     if (matchesSearch || filteredChildren.length > 0) {
@@ -34,7 +35,7 @@ export function filterBySearch(nodes: TreeNode[], query: string): TreeNode[] {
 
   return nodes
     .map(filterNode)
-    .filter((n): n is TreeNode => n !== null);
+    .filter((n): n is Item => n !== null);
 }
 
 /**
@@ -42,24 +43,26 @@ export function filterBySearch(nodes: TreeNode[], query: string): TreeNode[] {
  * Preserves parent nodes to maintain tree structure
  */
 export function filterByAttributes(
-  nodes: TreeNode[],
+  nodes: Item[],
   types: ItemType[],
   statuses: ItemStatus[],
-  priorities: ItemPriority[]
-): TreeNode[] {
+  priorities: Priority[]
+): Item[] {
   const hasFilters = types.length > 0 || statuses.length > 0 || priorities.length > 0;
   if (!hasFilters) return nodes;
 
-  const filterNode = (node: TreeNode): TreeNode | null => {
+  const filterNode = (node: Item): Item | null => {
     const matchesType = types.length === 0 || types.includes(node.type);
     const matchesStatus = statuses.length === 0 || statuses.includes(node.status);
-    const matchesPriority = priorities.length === 0 || priorities.includes(node.priority);
+    const matchesPriority = priorities.length === 0 || (node.priority && priorities.includes(node.priority));
 
     const matchesFilters = matchesType && matchesStatus && matchesPriority;
 
     const filteredChildren = node.children
-      .map(filterNode)
-      .filter((n): n is TreeNode => n !== null);
+      ? node.children
+          .map(filterNode)
+          .filter((n): n is Item => n !== null)
+      : [];
 
     // Include node if it matches OR if any children match
     if (matchesFilters || filteredChildren.length > 0) {
@@ -74,38 +77,32 @@ export function filterByAttributes(
 
   return nodes
     .map(filterNode)
-    .filter((n): n is TreeNode => n !== null);
+    .filter((n): n is Item => n !== null);
 }
 
 /**
  * Count total nodes in tree (including children)
  */
-export function countNodes(nodes: TreeNode[]): number {
+export function countNodes(nodes: Item[]): number {
   let count = nodes.length;
   nodes.forEach(node => {
-    count += countNodes(node.children);
+    if (node.children) {
+      count += countNodes(node.children);
+    }
   });
   return count;
 }
 
 /**
- * Increment version number (e.g., "1.0" -> "1.1", "2.9" -> "2.10")
+ * Increment version number (integer)
  */
-export function incrementVersion(version: string): string {
-  const parts = version.split('.');
-  if (parts.length !== 2) return '1.1';
-  
-  const major = parseInt(parts[0]);
-  const minor = parseInt(parts[1]);
-  
-  if (isNaN(major) || isNaN(minor)) return '1.1';
-  
-  return `${major}.${minor + 1}`;
+export function incrementVersion(version: number): number {
+  return version + 1;
 }
 
 /**
  * Check if editing an approved item (should reset to draft)
  */
 export function shouldResetToDraft(currentStatus: string): boolean {
-  return currentStatus === 'Approved' || currentStatus === 'Passed';
+  return currentStatus === 'approved' || currentStatus === 'passed';
 }
