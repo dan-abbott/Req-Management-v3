@@ -1,7 +1,7 @@
 // ItemForm - FIXED with proper modal backdrop
 
 import { useState, useEffect } from 'react';
-import { Item, ItemType, ItemStatus, ItemFormData, RequirementLevel } from '../../types';
+import { Item, ItemType, ItemStatus, ItemFormData } from '../../types';
 import { ITEM_TYPES, STATUS_OPTIONS, PRIORITY_OPTIONS, REQUIREMENT_LEVELS } from '../../utils/constants';
 
 interface ItemFormProps {
@@ -271,7 +271,7 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
                   <option value="">Select level...</option>
                   {REQUIREMENT_LEVELS.map(level => (
                     <option key={level} value={level}>
-                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                      {level.charAt(0).toUpperCase() + level.slice(1).replace('-', ' ')}
                     </option>
                   ))}
                 </select>
