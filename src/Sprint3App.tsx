@@ -14,7 +14,7 @@ import SearchBar from './components/items/SearchBar';
 import FilterBar from './components/items/FilterBar';
 import DeleteConfirmation from './components/items/DeleteConfirmation';
 
-function Sprint3App() {
+export function Sprint3App() {
   const { user, loading: authLoading } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
@@ -200,15 +200,22 @@ function Sprint3App() {
             />
           </div>
 
-          {/* Tree View */}
+          {/* Tree View - Use full items array, Sprint 2 compatible */}
           <div className="flex-1 overflow-auto p-4">
             {selectedProjectId ? (
-              <ItemTree
-                items={filteredItems}
-                selectedId={selectedItemId}
-                onSelect={setSelectedItemId}
-                onMove={handleItemMove}
-              />
+              items.length > 0 ? (
+                <ItemTree
+                  items={items}
+                  selectedId={selectedItemId}
+                  onSelect={setSelectedItemId}
+                  onMove={handleItemMove}
+                  {...{} as any}
+                />
+              ) : (
+                <div className="text-gray-500 text-center py-8">
+                  No items yet. Create your first item!
+                </div>
+              )
             ) : (
               <div className="text-gray-500 text-center py-8">
                 Select a project to view items
