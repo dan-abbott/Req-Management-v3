@@ -168,15 +168,15 @@ export function Sprint3App() {
         onNewProject={() => setShowProjectForm(true)}
       />
 
-      <div className="flex h-[calc(100vh-64px)]">
-        {/* Left Panel - Tree View */}
-        <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Left Panel - Tree View - WIDENED */}
+        <div className="w-[600px] bg-white border-r border-gray-200 flex flex-col">
           {/* Toolbar */}
           <div className="p-4 border-b border-gray-200 space-y-3">
             <button
               onClick={() => setShowItemForm(true)}
               disabled={!selectedProjectId}
-              className="w-full bg-fresh-500 text-white px-4 py-2 rounded hover:bg-fresh-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[#3FB95A] text-white px-4 py-2.5 rounded-lg font-medium hover:bg-[#35a04d] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               + New Item
             </button>
@@ -226,7 +226,7 @@ export function Sprint3App() {
         </div>
 
         {/* Right Panel - Detail View */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-gray-50">
           <ItemDetail
             item={selectedItem}
             onClose={() => setSelectedItemId(null)}

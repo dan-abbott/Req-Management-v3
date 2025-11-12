@@ -81,15 +81,15 @@ export default function FilterBar({
     <div className="space-y-3">
       {/* Type Filters */}
       <div>
-        <div className="text-xs font-medium text-gray-700 mb-1">Type</div>
-        <div className="flex flex-wrap gap-1">
+        <div className="text-xs font-semibold text-gray-700 mb-1.5">Type</div>
+        <div className="flex flex-wrap gap-1.5">
           {ITEM_TYPES.map(type => (
             <button
               key={type.value}
               onClick={() => toggleType(type.value)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
                 selectedTypes.includes(type.value)
-                  ? 'bg-fresh-500 text-white'
+                  ? 'bg-[#3FB95A] text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -101,15 +101,15 @@ export default function FilterBar({
 
       {/* Status Filters */}
       <div>
-        <div className="text-xs font-medium text-gray-700 mb-1">Status</div>
-        <div className="flex flex-wrap gap-1">
+        <div className="text-xs font-semibold text-gray-700 mb-1.5">Status</div>
+        <div className="flex flex-wrap gap-1.5">
           {availableStatuses().map(status => (
             <button
               key={status.value}
               onClick={() => toggleStatus(status.value)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
                 selectedStatuses.includes(status.value)
-                  ? 'bg-fresh-500 text-white'
+                  ? 'bg-[#3FB95A] text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -121,15 +121,15 @@ export default function FilterBar({
 
       {/* Priority Filters */}
       <div>
-        <div className="text-xs font-medium text-gray-700 mb-1">Priority</div>
-        <div className="flex flex-wrap gap-1">
+        <div className="text-xs font-semibold text-gray-700 mb-1.5">Priority</div>
+        <div className="flex flex-wrap gap-1.5">
           {PRIORITY_OPTIONS.map(priority => (
             <button
               key={priority.value}
               onClick={() => togglePriority(priority.value)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
                 selectedPriorities.includes(priority.value)
-                  ? 'bg-fresh-500 text-white'
+                  ? 'bg-[#3FB95A] text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -143,7 +143,7 @@ export default function FilterBar({
       {hasActiveFilters && (
         <button
           onClick={onClearFilters}
-          className="w-full text-xs text-gray-600 hover:text-gray-800 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          className="w-full text-xs font-medium text-gray-600 hover:text-gray-800 py-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
         >
           Clear All Filters
         </button>

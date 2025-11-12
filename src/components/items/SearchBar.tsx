@@ -12,7 +12,7 @@ export default function SearchBar({ searchQuery, onSearchChange, itemCount }: Se
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder="Search items..."
-        className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-fresh-500"
+        className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3FB95A] focus:border-transparent"
       />
       
       {/* Search Icon */}
@@ -49,7 +49,7 @@ export default function SearchBar({ searchQuery, onSearchChange, itemCount }: Se
       )}
 
       {/* Item Count */}
-      <div className="mt-1 text-xs text-gray-500 text-right">
+      <div className="mt-1.5 text-xs text-gray-500 text-right">
         {itemCount} item{itemCount !== 1 ? 's' : ''}
       </div>
     </div>
