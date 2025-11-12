@@ -49,7 +49,7 @@ function Sprint3App() {
     return <LoginPage />;
   }
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
   // Filter items
   const filteredItems = items.filter(item => {
@@ -81,40 +81,31 @@ function Sprint3App() {
     return true;
   });
 
-  const handleSaveItem = async (formData: ItemFormData) => {
+  const handleCreateItem = async (formData: ItemFormData) => {
     if (!selectedProjectId) return;
-
-    try {
-      if (editingItem) {
-        // Increment version
-        const newVersion = editingItem.version + 1;
-        
-        // Reset status to draft if item was approved
-        const newStatus = editingItem.status === 'approved' ? 'draft' : formData.status;
-
-        await updateItem(editingItem.id, {
-          ...formData,
-          version: newVersion,
-          status: newStatus
-        } as Partial<ItemFormData>);
-      } else {
-        await createItem({
-          ...formData,
-          project_id: selectedProjectId
-        });
-      }
-      
-      setShowItemForm(false);
-      setEditingItem(null);
-      await refresh();
-    } catch (error) {
-      console.error('Error saving item:', error);
-    }
+    await createItem(formData);
+    await refresh();
   };
 
-  const handleEditItem = (item: Item) => {
+  const handleUpdateItem = async (formData: ItemFormData) => {
+    if (!editingItem) return;
+
+    // Increment version
+    const newVersion = editingItem.version + 1;
+    
+    // Reset status to draft if item was approved
+    const newStatus = editingItem.status === 'approved' ? 'draft' : formData.status;
+
+    await updateItem(editingItem.id, {
+      ...formData,
+      version: newVersion,
+      status: newStatus
+    } as Partial<ItemFormData>);
+    await refresh();
+  };
+
+  const handleEdit = (item: Item) => {
     setEditingItem(item);
-    setShowItemForm(true);
     setSelectedItemId(null);
   };
 
@@ -153,8 +144,7 @@ function Sprint3App() {
     setSelectedPriorities([]);
   };
 
-  const selectedItem = items.find(item => item.id === selectedItemId);
-  const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
+  const selectedItem = items.find(item => item.id === selectedItemId) || null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,10 +160,7 @@ function Sprint3App() {
           {/* Toolbar */}
           <div className="p-4 border-b border-gray-200 space-y-3">
             <button
-              onClick={() => {
-                setShowItemForm(true);
-                setEditingItem(null);
-              }}
+              onClick={() => setShowItemForm(true)}
               disabled={!selectedProjectId}
               className="w-full bg-fresh-500 text-white px-4 py-2 rounded hover:bg-fresh-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
@@ -204,9 +191,9 @@ function Sprint3App() {
             {selectedProjectId ? (
               <ItemTree
                 items={filteredItems}
-                selectedItemId={selectedItemId}
-                onItemSelect={setSelectedItemId}
-                onItemMove={handleItemMove}
+                selectedId={selectedItemId}
+                onSelect={setSelectedItemId}
+                onMove={handleItemMove}
               />
             ) : (
               <div className="text-gray-500 text-center py-8">
@@ -216,36 +203,38 @@ function Sprint3App() {
           </div>
         </div>
 
-        {/* Right Panel - Detail/Form View */}
+        {/* Right Panel - Detail View */}
         <div className="flex-1 overflow-auto">
-          {showItemForm ? (
-            <div className="p-6">
-              <ItemForm
-                projectId={selectedProjectId!}
-                items={items}
-                editingItem={editingItem}
-                onSave={handleSaveItem}
-                onCancel={() => {
-                  setShowItemForm(false);
-                  setEditingItem(null);
-                }}
-              />
-            </div>
-          ) : selectedItem ? (
-            <ItemDetail
-              item={selectedItem}
-              allItems={items}
-              onEdit={handleEditItem}
-              onDelete={handleDeleteClick}
-              onClose={() => setSelectedItemId(null)}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              Select an item to view details
-            </div>
-          )}
+          <ItemDetail
+            item={selectedItem}
+            onClose={() => setSelectedItemId(null)}
+            onEdit={handleEdit}
+            onDelete={handleDeleteClick}
+          />
         </div>
       </div>
+
+      {/* Item Form Modal */}
+      <ItemForm
+        isOpen={showItemForm}
+        onClose={() => {
+          setShowItemForm(false);
+          setEditingItem(null);
+        }}
+        onSubmit={handleCreateItem}
+        availableItems={items}
+      />
+
+      {/* Edit Item Form Modal */}
+      {editingItem && (
+        <ItemForm
+          isOpen={true}
+          onClose={() => setEditingItem(null)}
+          onSubmit={handleUpdateItem}
+          item={editingItem}
+          availableItems={items}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {itemToDelete && (
