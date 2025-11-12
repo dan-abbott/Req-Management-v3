@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { supabase } from './lib/supabase';
-import { Project, Item, ItemType, ItemStatus, Priority, ItemFormData } from './types';
+import { useAuth } from './components/auth/AuthProvider';
+import { LoginPage } from './components/auth/LoginPage';
+import { Header } from './components/layout/Header';
+import { ItemTree } from './components/items/ItemTree';
+import { ItemForm } from './components/items/ItemForm';
+import { ItemDetail } from './components/items/ItemDetail';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
-import { itemsAPI } from './services/api';
-import Header from './components/layout/Header';
-import ProjectSelector from './components/projects/ProjectSelector';
-import ItemTree from './components/items/ItemTree';
-import ItemForm from './components/items/ItemForm';
-import ItemDetail from './components/items/ItemDetail';
-import LoginPage from './pages/LoginPage';
+import { Item, ItemType, ItemStatus, Priority, ItemFormData } from './types';
+import { itemsAPI } from './services/api/items';
 import SearchBar from './components/items/SearchBar';
 import FilterBar from './components/items/FilterBar';
 import DeleteConfirmation from './components/items/DeleteConfirmation';
 
 function Sprint3App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [showItemForm, setShowItemForm] = useState(false);
@@ -30,22 +27,8 @@ function Sprint3App() {
   const [selectedStatuses, setSelectedStatuses] = useState<ItemStatus[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
 
-  const { projects, addProject } = useProjects();
-  const { items, addItem, updateItem, deleteItem, refreshItems } = useItems(selectedProjectId);
-
-  // Auth
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { projects } = useProjects();
+  const { items, createItem, updateItem, deleteItem, refresh } = useItems(selectedProjectId);
 
   // Auto-select first project
   useEffect(() => {
@@ -54,7 +37,7 @@ function Sprint3App() {
     }
   }, [projects, selectedProjectId]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
@@ -62,7 +45,7 @@ function Sprint3App() {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return <LoginPage />;
   }
 
@@ -113,9 +96,9 @@ function Sprint3App() {
           ...formData,
           version: newVersion,
           status: newStatus
-        } as Partial<Item>);
+        } as Partial<ItemFormData>);
       } else {
-        await addItem({
+        await createItem({
           ...formData,
           project_id: selectedProjectId
         });
@@ -123,7 +106,7 @@ function Sprint3App() {
       
       setShowItemForm(false);
       setEditingItem(null);
-      await refreshItems();
+      await refresh();
     } catch (error) {
       console.error('Error saving item:', error);
     }
@@ -146,7 +129,7 @@ function Sprint3App() {
       await deleteItem(itemToDelete.id);
       setItemToDelete(null);
       setSelectedItemId(null);
-      await refreshItems();
+      await refresh();
     } catch (error) {
       console.error('Error deleting item:', error);
     }
@@ -157,7 +140,7 @@ function Sprint3App() {
       await itemsAPI.update(itemId, { 
         parent_id: newParentId 
       } as Partial<Item>);
-      await refreshItems();
+      await refresh();
     } catch (error) {
       console.error('Error moving item:', error);
     }
@@ -171,11 +154,12 @@ function Sprint3App() {
   };
 
   const selectedItem = items.find(item => item.id === selectedItemId);
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
-        user={session.user}
+        user={user}
         selectedProject={selectedProject}
         onProjectChange={setSelectedProjectId}
       />
