@@ -5,9 +5,10 @@ import { Header } from './components/layout/Header';
 import { ItemTree } from './components/items/ItemTree';
 import { ItemForm } from './components/items/ItemForm';
 import { ItemDetail } from './components/items/ItemDetail';
+import { ProjectForm } from './components/projects/ProjectForm';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
-import { Item, ItemType, ItemStatus, Priority, ItemFormData } from './types';
+import { Item, ItemType, ItemStatus, Priority, ItemFormData, Project } from './types';
 import { itemsAPI } from './services/api/items';
 import SearchBar from './components/items/SearchBar';
 import FilterBar from './components/items/FilterBar';
@@ -18,6 +19,7 @@ function Sprint3App() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [showItemForm, setShowItemForm] = useState(false);
+  const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
   
@@ -27,7 +29,7 @@ function Sprint3App() {
   const [selectedStatuses, setSelectedStatuses] = useState<ItemStatus[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
 
-  const { projects } = useProjects();
+  const { projects, createProject, refresh: refreshProjects } = useProjects();
   const { items, createItem, updateItem, deleteItem, refresh } = useItems(selectedProjectId);
 
   // Auto-select first project
@@ -80,6 +82,17 @@ function Sprint3App() {
 
     return true;
   });
+
+  const handleSelectProject = (project: Project) => {
+    setSelectedProjectId(project.id);
+    setSelectedItemId(null);
+  };
+
+  const handleCreateProject = async (data: any) => {
+    await createProject(data);
+    await refreshProjects();
+    setShowProjectForm(false);
+  };
 
   const handleCreateItem = async (formData: ItemFormData) => {
     if (!selectedProjectId) return;
@@ -149,9 +162,10 @@ function Sprint3App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
-        user={user}
+        projects={projects}
         selectedProject={selectedProject}
-        onProjectChange={setSelectedProjectId}
+        onSelectProject={handleSelectProject}
+        onNewProject={() => setShowProjectForm(true)}
       />
 
       <div className="flex h-[calc(100vh-64px)]">
@@ -244,6 +258,13 @@ function Sprint3App() {
           onCancel={() => setItemToDelete(null)}
         />
       )}
+
+      {/* Project Form Modal */}
+      <ProjectForm
+        isOpen={showProjectForm}
+        onClose={() => setShowProjectForm(false)}
+        onSubmit={handleCreateProject}
+      />
     </div>
   );
 }
