@@ -1,10 +1,10 @@
-// Tree helper utilities for hierarchical item structure (FULLY FIXED)
+// Tree helper utilities - FIXED VERSION
 
 import { Item, RequirementLevel, ItemType, ItemStatus, Priority } from '../types';
 
-// TreeNode - separate interface that doesn't extend Item to avoid children type conflict
+// TreeNode - Explicitly separate from Item to avoid type conflicts
 export interface TreeNode {
-  // Core Item properties (copied, not extended)
+  // Core Item properties (copied, not extended to avoid conflicts)
   id: number;
   project_id: number;
   type: ItemType;
@@ -23,19 +23,20 @@ export interface TreeNode {
   created_at: string;
   updated_at: string;
   
-  // Tree-specific properties
-  children: TreeNode[];  // Array of TreeNode, not number[]
-  depth: number;  // Tree depth (0 = root)
+  // Tree-specific properties  
+  children: TreeNode[];  // Array of TreeNode objects, NOT number[]
+  depth: number;         // Tree depth (0 = root)
 }
 
 /**
  * Convert flat array of items to tree structure
+ * FIXED: Properly handles TreeNode.children as TreeNode[] not number[]
  */
 export function buildTree(items: Item[]): TreeNode[] {
   // Create a map of all items for quick lookup
   const itemMap = new Map<number, TreeNode>();
   
-  // Initialize all items as tree nodes
+  // Initialize all items as tree nodes with empty TreeNode[] children
   items.forEach(item => {
     itemMap.set(item.id, {
       // Copy all Item properties
@@ -57,7 +58,7 @@ export function buildTree(items: Item[]): TreeNode[] {
       created_at: item.created_at,
       updated_at: item.updated_at,
       // Add tree properties
-      children: [],
+      children: [],  // Empty TreeNode[] array
       depth: 0
     });
   });
@@ -71,7 +72,7 @@ export function buildTree(items: Item[]): TreeNode[] {
     if (item.parent_id && itemMap.has(item.parent_id)) {
       // Has parent - add to parent's children
       const parent = itemMap.get(item.parent_id)!;
-      parent.children.push(node);
+      parent.children.push(node);  // Push TreeNode to TreeNode[]
       node.depth = parent.depth + 1;
     } else {
       // No parent - this is a root node
@@ -84,7 +85,7 @@ export function buildTree(items: Item[]): TreeNode[] {
     node.children.sort((a, b) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
-    node.children.forEach(sortChildren);
+    node.children.forEach(sortChildren);  // Recursive sort
   };
 
   roots.forEach(sortChildren);
@@ -98,7 +99,7 @@ export function buildTree(items: Item[]): TreeNode[] {
 export function findNode(nodes: TreeNode[], id: number): TreeNode | null {
   for (const node of nodes) {
     if (node.id === id) return node;
-    const found = findNode(node.children, id);
+    const found = findNode(node.children, id);  // node.children is TreeNode[]
     if (found) return found;
   }
   return null;
@@ -109,7 +110,7 @@ export function findNode(nodes: TreeNode[], id: number): TreeNode | null {
  */
 export function getDescendantIds(node: TreeNode): number[] {
   const ids: number[] = [node.id];
-  node.children.forEach(child => {
+  node.children.forEach(child => {  // child is TreeNode
     ids.push(...getDescendantIds(child));
   });
   return ids;
@@ -185,41 +186,13 @@ export function shouldExpandToLevel(
 /**
  * Get next requirement level (for level suggestion on derivation)
  */
-export function getNextLevel(currentLevel?: RequirementLevel): RequirementLevel | null {
-  if (!currentLevel) return REQUIREMENT_LEVELS[0];
+export function getNextLevel(currentLevel?: RequirementLevel): RequirementLevel | undefined {
+  if (!currentLevel) return 'system';
   
   const currentIndex = getLevelIndex(currentLevel);
-  if (currentIndex < REQUIREMENT_LEVELS.length - 1) {
-    return REQUIREMENT_LEVELS[currentIndex + 1];
+  if (currentIndex < 0 || currentIndex >= REQUIREMENT_LEVELS.length - 1) {
+    return undefined;
   }
   
-  return null;
-}
-
-/**
- * Count total nodes in tree (for metrics)
- */
-export function countNodes(nodes: TreeNode[]): number {
-  let count = nodes.length;
-  nodes.forEach(node => {
-    count += countNodes(node.children);
-  });
-  return count;
-}
-
-/**
- * Get maximum depth of tree
- */
-export function getMaxDepth(nodes: TreeNode[]): number {
-  if (nodes.length === 0) return 0;
-  
-  let maxDepth = 1;
-  nodes.forEach(node => {
-    const childDepth = node.children.length > 0 
-      ? 1 + getMaxDepth(node.children)
-      : 1;
-    maxDepth = Math.max(maxDepth, childDepth);
-  });
-  
-  return maxDepth;
+  return REQUIREMENT_LEVELS[currentIndex + 1];
 }
