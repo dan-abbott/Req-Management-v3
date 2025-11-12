@@ -6,6 +6,7 @@ import { ItemTree } from './components/items/ItemTree';
 import { ItemForm } from './components/items/ItemForm';
 import { ItemDetail } from './components/items/ItemDetail';
 import { ProjectForm } from './components/projects/ProjectForm';
+import { ResizablePanels } from './components/layout/ResizablePanels';
 import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
 import { Item, ItemType, ItemStatus, Priority, ItemFormData, Project } from './types';
@@ -168,72 +169,80 @@ export function Sprint3App() {
         onNewProject={() => setShowProjectForm(true)}
       />
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Panel - Tree View - WIDENED */}
-        <div className="w-[600px] bg-white border-r border-gray-200 flex flex-col">
-          {/* Toolbar */}
-          <div className="p-4 border-b border-gray-200 space-y-3">
-            <button
-              onClick={() => setShowItemForm(true)}
-              disabled={!selectedProjectId}
-              className="w-full bg-[#3FB95A] text-white px-4 py-2.5 rounded-lg font-medium hover:bg-[#35a04d] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              + New Item
-            </button>
+      <div className="h-[calc(100vh-80px)]">
+        <ResizablePanels
+          defaultLeftWidth={40}
+          minLeftWidth={25}
+          maxLeftWidth={70}
+          left={
+            /* Left Panel - Tree View */
+            <div className="h-full bg-white border-r border-gray-200 flex flex-col">
+              {/* Toolbar */}
+              <div className="p-4 border-b border-gray-200 space-y-3">
+                <button
+                  onClick={() => setShowItemForm(true)}
+                  disabled={!selectedProjectId}
+                  className="w-full bg-[#3FB95A] text-white px-4 py-2.5 rounded-lg font-medium hover:bg-[#35a04d] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  + New Item
+                </button>
 
-            {/* Search Bar */}
-            <SearchBar
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              itemCount={filteredItems.length}
-            />
-
-            {/* Filter Bar */}
-            <FilterBar
-              selectedTypes={selectedTypes}
-              onTypesChange={setSelectedTypes}
-              selectedStatuses={selectedStatuses}
-              onStatusesChange={setSelectedStatuses}
-              selectedPriorities={selectedPriorities}
-              onPrioritiesChange={setSelectedPriorities}
-              onClearFilters={handleClearFilters}
-            />
-          </div>
-
-          {/* Tree View - With proper filtering */}
-          <div className="flex-1 overflow-auto p-4">
-            {selectedProjectId ? (
-              filteredItems.length > 0 ? (
-                <ItemTree
-                  items={filteredItems}
-                  selectedId={selectedItemId}
-                  onSelect={setSelectedItemId}
-                  onMove={handleItemMove}
+                {/* Search Bar */}
+                <SearchBar
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  itemCount={filteredItems.length}
                 />
-              ) : (
-                <div className="text-gray-500 text-center py-8">
-                  {items.length === 0 
-                    ? 'No items yet. Create your first item!' 
-                    : 'No items match your filters.'}
-                </div>
-              )
-            ) : (
-              <div className="text-gray-500 text-center py-8">
-                Select a project to view items
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Right Panel - Detail View */}
-        <div className="flex-1 overflow-auto bg-gray-50">
-          <ItemDetail
-            item={selectedItem}
-            onClose={() => setSelectedItemId(null)}
-            onEdit={handleEdit}
-            onDelete={handleDeleteClick}
-          />
-        </div>
+                {/* Filter Bar */}
+                <FilterBar
+                  selectedTypes={selectedTypes}
+                  onTypesChange={setSelectedTypes}
+                  selectedStatuses={selectedStatuses}
+                  onStatusesChange={setSelectedStatuses}
+                  selectedPriorities={selectedPriorities}
+                  onPrioritiesChange={setSelectedPriorities}
+                  onClearFilters={handleClearFilters}
+                />
+              </div>
+
+              {/* Tree View */}
+              <div className="flex-1 overflow-auto p-4">
+                {selectedProjectId ? (
+                  filteredItems.length > 0 ? (
+                    <ItemTree
+                      items={filteredItems}
+                      selectedId={selectedItemId}
+                      onSelect={setSelectedItemId}
+                      onMove={handleItemMove}
+                    />
+                  ) : (
+                    <div className="text-gray-500 text-center py-8">
+                      {items.length === 0 
+                        ? 'No items yet. Create your first item!' 
+                        : 'No items match your filters.'}
+                    </div>
+                  )
+                ) : (
+                  <div className="text-gray-500 text-center py-8">
+                    Select a project to view items
+                  </div>
+                )}
+              </div>
+            </div>
+          }
+          right={
+            /* Right Panel - Detail View */
+            <div className="h-full overflow-auto bg-gray-50">
+              <ItemDetail
+                item={selectedItem}
+                onClose={() => setSelectedItemId(null)}
+                onEdit={handleEdit}
+                onDelete={handleDeleteClick}
+              />
+            </div>
+          }
+        />
       </div>
 
       {/* Item Form Modal */}

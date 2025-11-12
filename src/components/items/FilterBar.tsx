@@ -1,5 +1,8 @@
+// FilterBar - Updated with multiselect dropdowns
+
 import { ItemType, ItemStatus, Priority } from '../../types';
 import { ITEM_TYPES, STATUS_OPTIONS, PRIORITY_OPTIONS } from '../../utils/constants';
+import { Multiselect } from '../common/Multiselect';
 
 interface FilterBarProps {
   selectedTypes: ItemType[];
@@ -49,101 +52,44 @@ export default function FilterBar({
     }));
   };
 
-  const toggleType = (type: ItemType) => {
-    if (selectedTypes.includes(type)) {
-      onTypesChange(selectedTypes.filter(t => t !== type));
-    } else {
-      onTypesChange([...selectedTypes, type]);
-    }
-  };
-
-  const toggleStatus = (status: ItemStatus) => {
-    if (selectedStatuses.includes(status)) {
-      onStatusesChange(selectedStatuses.filter(s => s !== status));
-    } else {
-      onStatusesChange([...selectedStatuses, status]);
-    }
-  };
-
-  const togglePriority = (priority: Priority) => {
-    if (selectedPriorities.includes(priority)) {
-      onPrioritiesChange(selectedPriorities.filter(p => p !== priority));
-    } else {
-      onPrioritiesChange([...selectedPriorities, priority]);
-    }
-  };
-
   const hasActiveFilters = selectedTypes.length > 0 || 
                            selectedStatuses.length > 0 || 
                            selectedPriorities.length > 0;
 
   return (
     <div className="space-y-3">
-      {/* Type Filters */}
-      <div>
-        <div className="text-xs font-semibold text-gray-700 mb-1.5">Type</div>
-        <div className="flex flex-wrap gap-1.5">
-          {ITEM_TYPES.map(type => (
-            <button
-              key={type.value}
-              onClick={() => toggleType(type.value)}
-              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                selectedTypes.includes(type.value)
-                  ? 'bg-[#3FB95A] text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {type.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Type Filter */}
+      <Multiselect
+        label="Type"
+        options={ITEM_TYPES}
+        selected={selectedTypes}
+        onChange={(values) => onTypesChange(values as ItemType[])}
+        placeholder="All types"
+      />
 
-      {/* Status Filters */}
-      <div>
-        <div className="text-xs font-semibold text-gray-700 mb-1.5">Status</div>
-        <div className="flex flex-wrap gap-1.5">
-          {availableStatuses().map(status => (
-            <button
-              key={status.value}
-              onClick={() => toggleStatus(status.value)}
-              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                selectedStatuses.includes(status.value)
-                  ? 'bg-[#3FB95A] text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {status.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Status Filter */}
+      <Multiselect
+        label="Status"
+        options={availableStatuses()}
+        selected={selectedStatuses}
+        onChange={(values) => onStatusesChange(values as ItemStatus[])}
+        placeholder="All statuses"
+      />
 
-      {/* Priority Filters */}
-      <div>
-        <div className="text-xs font-semibold text-gray-700 mb-1.5">Priority</div>
-        <div className="flex flex-wrap gap-1.5">
-          {PRIORITY_OPTIONS.map(priority => (
-            <button
-              key={priority.value}
-              onClick={() => togglePriority(priority.value)}
-              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                selectedPriorities.includes(priority.value)
-                  ? 'bg-[#3FB95A] text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {priority.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Priority Filter */}
+      <Multiselect
+        label="Priority"
+        options={PRIORITY_OPTIONS}
+        selected={selectedPriorities}
+        onChange={(values) => onPrioritiesChange(values as Priority[])}
+        placeholder="All priorities"
+      />
 
       {/* Clear Filters Button */}
       {hasActiveFilters && (
         <button
           onClick={onClearFilters}
-          className="w-full text-xs font-medium text-gray-600 hover:text-gray-800 py-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          className="w-full text-xs font-medium text-gray-600 hover:text-gray-800 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           Clear All Filters
         </button>
