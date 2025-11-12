@@ -270,8 +270,8 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
                 >
                   <option value="">Select level...</option>
                   {REQUIREMENT_LEVELS.map(level => (
-                    <option key={level} value={level}>
-                      {level.charAt(0).toUpperCase() + level.slice(1).replace('-', ' ')}
+                    <option key={level.value} value={level.value}>
+                      {level.label}
                     </option>
                   ))}
                 </select>
