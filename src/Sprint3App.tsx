@@ -1,4 +1,4 @@
-// Sprint3App.tsx - Complete working version with all fixes
+// Sprint3App.tsx - Complete working version with all fixes tweak
 
 import { useState, useEffect } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
