@@ -45,10 +45,8 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
   const {
     outgoing,
     incoming,
-    loading: relLoading,
     createRelationship,
-    deleteRelationship,
-    refreshRelationships
+    deleteRelationship
   } = useRelationships(item?.id || null);
 
   // Update form when item changes (for edit mode)
