@@ -47,7 +47,8 @@ export function RelationshipGraph({ currentItem, outgoing, incoming, onItemClick
     color: '#3FB95A' // Fresh green for center node
   };
 
-  // Calculate positions for outgoing relationships (below center)
+  // Calculate positions for outgoing relationships (ABOVE center - items this points to)
+  // Semantically: "derives-from" B means B is above (parent/source)
   const outgoingNodes: GraphNode[] = displayOutgoing.map((rel, index) => {
     if (!rel.to_item) return null;
     
@@ -60,13 +61,13 @@ export function RelationshipGraph({ currentItem, outgoing, incoming, onItemClick
       title: rel.to_item.title,
       type: getItemTypeLabel(rel.to_item.type),
       x: startX + (index * spacing),
-      y: height - 100,
+      y: 100,
       radius: 30,
-      color: '#60A5FA' // Blue for outgoing
+      color: '#60A5FA' // Blue for outgoing (items this points to)
     };
   }).filter((n): n is GraphNode => n !== null);
 
-  // Calculate positions for incoming relationships (above center)
+  // Calculate positions for incoming relationships (BELOW center - items that point to this)
   const incomingNodes: GraphNode[] = displayIncoming.map((rel, index) => {
     if (!rel.from_item) return null;
     
@@ -79,23 +80,23 @@ export function RelationshipGraph({ currentItem, outgoing, incoming, onItemClick
       title: rel.from_item.title,
       type: getItemTypeLabel(rel.from_item.type),
       x: startX + (index * spacing),
-      y: 100,
+      y: height - 100,
       radius: 30,
-      color: '#34D399' // Green for incoming
+      color: '#34D399' // Green for incoming (items that point to this)
     };
   }).filter((n): n is GraphNode => n !== null);
 
   // Create edges
   const edges: GraphEdge[] = [
     ...displayOutgoing.map((rel, index) => ({
-      from: centerNode,
-      to: outgoingNodes[index],
+      from: outgoingNodes[index],
+      to: centerNode,
       label: getRelationshipTypeLabel(rel.type),
       isOutgoing: true
     })),
     ...displayIncoming.map((rel, index) => ({
-      from: incomingNodes[index],
-      to: centerNode,
+      from: centerNode,
+      to: incomingNodes[index],
       label: getRelationshipTypeLabel(rel.type),
       isOutgoing: false
     }))
@@ -194,57 +195,7 @@ export function RelationshipGraph({ currentItem, outgoing, incoming, onItemClick
           );
         })}
 
-        {/* Draw incoming nodes */}
-        {incomingNodes.map((node) => (
-          <g 
-            key={`node-${node.id}`}
-            className={onItemClick ? "cursor-pointer" : ""}
-            onClick={() => onItemClick && onItemClick(node.id)}
-          >
-            <circle
-              cx={node.x}
-              cy={node.y}
-              r={node.radius}
-              fill={node.color}
-              stroke="white"
-              strokeWidth="3"
-              opacity="0.9"
-              className={onItemClick ? "hover:opacity-100" : ""}
-            />
-            <text
-              x={node.x}
-              y={node.y - 5}
-              textAnchor="middle"
-              fontSize="11"
-              fill="white"
-              fontWeight="600"
-            >
-              #{node.id}
-            </text>
-            <text
-              x={node.x}
-              y={node.y + 7}
-              textAnchor="middle"
-              fontSize="9"
-              fill="white"
-              opacity="0.9"
-            >
-              {node.type}
-            </text>
-            {/* Title below node */}
-            <text
-              x={node.x}
-              y={node.y + node.radius + 15}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#374151"
-            >
-              {node.title.substring(0, 15)}{node.title.length > 15 ? '...' : ''}
-            </text>
-          </g>
-        ))}
-
-        {/* Draw outgoing nodes */}
+        {/* Draw outgoing nodes (above center - items this points to) */}
         {outgoingNodes.map((node) => (
           <g 
             key={`node-${node.id}`}
@@ -281,7 +232,57 @@ export function RelationshipGraph({ currentItem, outgoing, incoming, onItemClick
             >
               {node.type}
             </text>
-            {/* Title above node */}
+            {/* Title below node since it's above center */}
+            <text
+              x={node.x}
+              y={node.y + node.radius + 15}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#374151"
+            >
+              {node.title.substring(0, 15)}{node.title.length > 15 ? '...' : ''}
+            </text>
+          </g>
+        ))}
+
+        {/* Draw incoming nodes (below center - items pointing to this) */}
+        {incomingNodes.map((node) => (
+          <g 
+            key={`node-${node.id}`}
+            className={onItemClick ? "cursor-pointer" : ""}
+            onClick={() => onItemClick && onItemClick(node.id)}
+          >
+            <circle
+              cx={node.x}
+              cy={node.y}
+              r={node.radius}
+              fill={node.color}
+              stroke="white"
+              strokeWidth="3"
+              opacity="0.9"
+              className={onItemClick ? "hover:opacity-100" : ""}
+            />
+            <text
+              x={node.x}
+              y={node.y - 5}
+              textAnchor="middle"
+              fontSize="11"
+              fill="white"
+              fontWeight="600"
+            >
+              #{node.id}
+            </text>
+            <text
+              x={node.x}
+              y={node.y + 7}
+              textAnchor="middle"
+              fontSize="9"
+              fill="white"
+              opacity="0.9"
+            >
+              {node.type}
+            </text>
+            {/* Title above node since it's below center */}
             <text
               x={node.x}
               y={node.y - node.radius - 8}
@@ -338,14 +339,14 @@ export function RelationshipGraph({ currentItem, outgoing, incoming, onItemClick
         </g>
 
         {/* Legend */}
-        <g transform={`translate(10, ${height - 60})`}>
+        <g transform={`translate(10, ${height - 80})`}>
           <text x="0" y="0" fontSize="11" fill="#6B7280" fontWeight="600">Legend:</text>
           <circle cx="10" cy="15" r="6" fill="#3FB95A" opacity="0.9" />
           <text x="20" y="19" fontSize="10" fill="#374151">Current Item</text>
-          <circle cx="10" cy="32" r="6" fill="#34D399" opacity="0.9" />
-          <text x="20" y="36" fontSize="10" fill="#374151">Incoming</text>
-          <circle cx="10" cy="49" r="6" fill="#60A5FA" opacity="0.9" />
-          <text x="20" y="53" fontSize="10" fill="#374151">Outgoing</text>
+          <circle cx="10" cy="32" r="6" fill="#60A5FA" opacity="0.9" />
+          <text x="20" y="36" fontSize="10" fill="#374151">Outgoing (above - items this points to)</text>
+          <circle cx="10" cy="49" r="6" fill="#34D399" opacity="0.9" />
+          <text x="20" y="53" fontSize="10" fill="#374151">Incoming (below - items pointing to this)</text>
         </g>
       </svg>
 

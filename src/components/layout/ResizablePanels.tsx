@@ -1,4 +1,4 @@
-// ResizablePanels - Draggable divider between two panels
+// ResizablePanels - Draggable divider between two panels with independent scrolling
 
 import { useState, useRef, useEffect, ReactNode } from 'react';
 
@@ -53,33 +53,35 @@ export function ResizablePanels({
   }, [isDragging, minLeftWidth, maxLeftWidth]);
 
   return (
-    <div ref={containerRef} className="flex h-full relative">
-      {/* Left Panel */}
+    <div ref={containerRef} className="flex h-full w-full relative">
+      {/* Left Panel - Independent scroll */}
       <div 
         style={{ width: `${leftWidth}%` }}
-        className="flex-shrink-0"
+        className="flex-shrink-0 overflow-y-auto overflow-x-hidden"
       >
         {left}
       </div>
 
       {/* Draggable Divider */}
       <div
-        className={`w-1 bg-gray-200 hover:bg-[#3FB95A] cursor-col-resize flex-shrink-0 relative group ${
+        className={`w-1 bg-gray-300 hover:bg-[#3FB95A] cursor-col-resize flex-shrink-0 relative group transition-colors ${
           isDragging ? 'bg-[#3FB95A]' : ''
         }`}
         onMouseDown={() => setIsDragging(true)}
       >
         {/* Visual handle */}
         <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4 flex items-center justify-center">
-          <div className="w-1 h-8 bg-gray-300 rounded-full group-hover:bg-[#3FB95A] opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={`w-1 h-8 rounded-full transition-all ${
+            isDragging ? 'bg-[#3FB95A] opacity-100' : 'bg-gray-400 opacity-0 group-hover:opacity-100'
+          }`}>
           </div>
         </div>
       </div>
 
-      {/* Right Panel */}
+      {/* Right Panel - Independent scroll */}
       <div 
-        style={{ width: `${100 - leftWidth}%` }}
-        className="flex-1 min-w-0"
+        style={{ width: `${100 - leftWidth - 0.1}%` }}
+        className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden"
       >
         {right}
       </div>

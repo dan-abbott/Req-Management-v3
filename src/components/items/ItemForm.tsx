@@ -167,7 +167,7 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
       {/* Modal Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -218,7 +218,8 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
 
           {/* Content */}
           {activeTab === 'details' ? (
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                   {error}
@@ -439,8 +440,10 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
                 </div>
               )}
 
+              </div>
+
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-3 px-6 py-4 border-t border-gray-200 bg-white">
                 <button
                   type="button"
                   onClick={onClose}
@@ -460,7 +463,7 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
             </form>
           ) : (
             /* Relationships Tab */
-            <div className="p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {item && (
                 <>
                   <RelationshipManager
@@ -481,6 +484,19 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
                       currentItem={item}
                       outgoing={outgoing}
                       incoming={incoming}
+                      onItemClick={(itemId) => {
+                        // Find the clicked item and open it for editing
+                        const clickedItem = availableItems.find(i => i.id === itemId);
+                        if (clickedItem) {
+                          // Close current modal and you would typically trigger opening the new item
+                          // For now, we'll just alert - you can integrate with your navigation system
+                          if (window.confirm(`Navigate to "${clickedItem.title}"?`)) {
+                            onClose();
+                            // You would typically call a navigation callback here
+                            // e.g., onNavigateToItem(itemId)
+                          }
+                        }
+                      }}
                     />
                   </div>
                 </>
