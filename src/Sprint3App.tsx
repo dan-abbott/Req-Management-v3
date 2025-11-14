@@ -8,14 +8,14 @@ import { itemsAPI } from './services/api/items';
 import { Item, ItemFormData, ItemType, ItemStatus, Priority } from './types';
 
 // Components
-import LoginPage from './pages/LoginPage';
-import Header from './components/layout/Header';
-import ResizablePanels from './components/layout/ResizablePanels';
-import SearchBar from './components/items/SearchBar';
+import { LoginPage } from './components/auth/LoginPage';
+import { Header } from './components/layout/Header';
+import { ResizablePanels } from './components/layout/ResizablePanels';
+import { SearchBar } from './components/items/SearchBar';
 import FilterBar from './components/items/FilterBar';
-import ItemTree from './components/items/ItemTree';
-import ItemDetail from './components/items/ItemDetail';
-import ItemForm from './components/items/ItemForm';
+import { ItemTree } from './components/items/ItemTree';
+import { ItemDetail } from './components/items/ItemDetail';
+import { ItemForm } from './components/items/ItemForm';
 import DeleteConfirmation from './components/items/DeleteConfirmation';
 import { Plus } from 'lucide-react';
 
@@ -25,7 +25,7 @@ function Sprint3App() {
   const [selectedProject, setSelectedProject] = useState<any>(null);
 
   // Items hook
-  const { items, loading: itemsLoading, createItem, updateItem, deleteItem, refreshItems } = useItems(selectedProject?.id || null);
+  const { items, loading: itemsLoading, createItem, updateItem, deleteItem, refresh } = useItems(selectedProject?.id || null);
 
   // UI State
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
@@ -87,7 +87,7 @@ function Sprint3App() {
       ...formData,
       project_id: selectedProject.id,
     } as any); // Type assertion for project_id
-    await refreshItems();
+    await refresh();
     setShowItemForm(false);
   };
 
@@ -106,7 +106,7 @@ function Sprint3App() {
     };
 
     await updateItem(editingItem.id, updateData as Partial<Item>);
-    await refreshItems();
+    await refresh();
     setEditingItem(null);
   };
 
@@ -154,7 +154,7 @@ function Sprint3App() {
 
       setDeletingItem(null);
       setSelectedItemId(null);
-      await refreshItems();
+      await refresh();
     } catch (error) {
       console.error('Error deleting item:', error);
       alert('Failed to delete item. Please try again.');
@@ -166,7 +166,7 @@ function Sprint3App() {
       await itemsAPI.update(itemId, { 
         parent_id: newParentId 
       } as Partial<Item>);
-      await refreshItems();
+      await refresh();
     } catch (error) {
       console.error('Error moving item:', error);
     }
@@ -224,9 +224,10 @@ function Sprint3App() {
                 </div>
 
                 <SearchBar
-                  query={searchQuery}
-                  onQueryChange={setSearchQuery}
-                  placeholder="Search items..."
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  itemCount={filteredItems.length}
+                  totalCount={items.length}
                 />
 
                 <FilterBar
