@@ -1,4 +1,4 @@
-// Sprint3App.tsx - Complete working version with all fixes tweak
+// Sprint3App.tsx - Complete working version with all fixes
 
 import { useState, useEffect } from 'react';
 import { useAuth } from './components/auth/AuthProvider';
@@ -6,12 +6,10 @@ import { useProjects } from './hooks/useProjects';
 import { useItems } from './hooks/useItems';
 import { itemsAPI } from './services/api/items';
 import { Item, ItemFormData, ItemType, ItemStatus, Priority } from './types';
-import { filterBySearch, filterByAttributes } from './utils/filterHelpers';
 
 // Components
 import LoginPage from './pages/LoginPage';
 import Header from './components/layout/Header';
-import ProjectSelector from './components/projects/ProjectSelector';
 import ResizablePanels from './components/layout/ResizablePanels';
 import SearchBar from './components/items/SearchBar';
 import FilterBar from './components/items/FilterBar';
@@ -48,13 +46,35 @@ function Sprint3App() {
     }
   }, [projects, selectedProject]);
 
-  // Apply filters
-  const filteredItems = (() => {
-    let filtered = items;
-    filtered = filterByAttributes(filtered, selectedTypes, selectedStatuses, selectedPriorities);
-    filtered = filterBySearch(filtered, searchQuery);
-    return filtered;
-  })();
+  // Apply filters - inline filtering to match Item[] type
+  const filteredItems = items.filter(item => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesTitle = item.title.toLowerCase().includes(query);
+      const matchesDescription = item.description?.toLowerCase().includes(query);
+      if (!matchesTitle && !matchesDescription) return false;
+    }
+
+    // Type filter
+    if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) {
+      return false;
+    }
+
+    // Status filter
+    if (selectedStatuses.length > 0 && !selectedStatuses.includes(item.status)) {
+      return false;
+    }
+
+    // Priority filter
+    if (selectedPriorities.length > 0) {
+      if (!item.priority || !selectedPriorities.includes(item.priority)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   const selectedItem = selectedItemId ? items.find(i => i.id === selectedItemId) || null : null;
 
@@ -66,7 +86,7 @@ function Sprint3App() {
     await createItem({
       ...formData,
       project_id: selectedProject.id,
-    });
+    } as any); // Type assertion for project_id
     await refreshItems();
     setShowItemForm(false);
   };
@@ -204,8 +224,8 @@ function Sprint3App() {
                 </div>
 
                 <SearchBar
-                  value={searchQuery}
-                  onChange={setSearchQuery}
+                  query={searchQuery}
+                  onQueryChange={setSearchQuery}
                   placeholder="Search items..."
                 />
 
