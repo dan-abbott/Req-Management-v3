@@ -97,10 +97,10 @@ export function ItemForm({ isOpen, onClose, onSubmit, item, availableItems = [] 
     setLoading(true);
 
     try {
-      // CRITICAL FIX: Convert empty parent to null
-      const submitData = {
+      // CRITICAL FIX: Convert null parent to undefined for ItemFormData type
+      const submitData: ItemFormData = {
         ...formData,
-        parent_id: formData.parent_id || null  // Empty/undefined becomes null
+        parent_id: formData.parent_id ?? undefined  // null becomes undefined
       };
       await onSubmit(submitData);
       onClose();

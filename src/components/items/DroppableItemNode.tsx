@@ -2,7 +2,7 @@
 
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
-import { TreeNode } from '../../types';
+import { TreeNode } from '../../utils/treeHelpers';
 
 // TYPE_COLORS - Consistent across all nodes
 const TYPE_COLORS = {
@@ -146,7 +146,7 @@ export function DroppableItemNode({
 
       {/* Status Badge - ALWAYS uses STATUS_COLORS */}
       <span className={`px-2 py-0.5 text-xs font-medium rounded flex-shrink-0 ${statusColor}`}>
-        {node.status.split('-').map(word => 
+        {node.status.split('-').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' ')}
       </span>

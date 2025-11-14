@@ -114,3 +114,5 @@ export function FilterBar({
     </div>
   );
 }
+
+export default FilterBar;
