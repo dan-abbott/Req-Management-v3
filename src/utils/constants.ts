@@ -1,4 +1,4 @@
-import { ItemType, ItemStatus, Priority, RequirementLevel } from '../types';
+import { ItemType, ItemStatus, Priority, RequirementLevel, RelationshipType } from '../types';
 
 // Item type options
 export const ITEM_TYPES: { value: ItemType; label: string }[] = [
@@ -55,6 +55,30 @@ export const REQUIREMENT_LEVELS: { value: RequirementLevel; label: string }[] = 
   { value: 'material', label: 'Material' }
 ];
 
+// Sprint 4: Relationship type options
+export const RELATIONSHIP_TYPES: { value: RelationshipType; label: string; description: string }[] = [
+  { 
+    value: 'tests', 
+    label: 'Tests', 
+    description: 'Test case validates a requirement' 
+  },
+  { 
+    value: 'depends-on', 
+    label: 'Depends On', 
+    description: 'This item requires another item to be completed first' 
+  },
+  { 
+    value: 'derives-from', 
+    label: 'Derives From', 
+    description: 'This item is decomposed or refined from another item' 
+  },
+  { 
+    value: 'relates-to', 
+    label: 'Relates To', 
+    description: 'General association between items' 
+  }
+];
+
 // Color mappings for UI
 export const TYPE_COLORS: Record<ItemType, string> = {
   'epic': 'bg-purple-100 text-purple-800 border-purple-300',
@@ -82,6 +106,14 @@ export const PRIORITY_COLORS: Record<Priority, string> = {
   'medium': 'text-yellow-600',
   'high': 'text-orange-600',
   'critical': 'text-red-600'
+};
+
+// Sprint 4: Relationship type colors
+export const RELATIONSHIP_COLORS: Record<RelationshipType, string> = {
+  'tests': 'bg-green-100 text-green-800',
+  'depends-on': 'bg-orange-100 text-orange-800',
+  'derives-from': 'bg-blue-100 text-blue-800',
+  'relates-to': 'bg-gray-100 text-gray-800'
 };
 
 export function getItemTypeColor(type: ItemType): string {
@@ -137,3 +169,39 @@ export function getStatusLabel(status: ItemStatus): string {
   return labels[status] || status;
 }
 
+// Sprint 4: Relationship type helpers
+export function getRelationshipTypeLabel(type: RelationshipType): string {
+  const labels = {
+    'tests': 'Tests',
+    'depends-on': 'Depends On',
+    'derives-from': 'Derives From',
+    'relates-to': 'Relates To'
+  };
+  return labels[type] || type;
+}
+
+export function getRelationshipTypeColor(type: RelationshipType): string {
+  return RELATIONSHIP_COLORS[type] || 'bg-gray-100 text-gray-800';
+}
+
+// Sprint 4: Get next level down in requirement hierarchy
+export function getNextRequirementLevel(currentLevel?: RequirementLevel): RequirementLevel | null {
+  if (!currentLevel) return 'system';
+  
+  const levelOrder: RequirementLevel[] = [
+    'system',
+    'sub-system',
+    'assembly',
+    'sub-assembly',
+    'component',
+    'sub-component',
+    'material'
+  ];
+  
+  const currentIndex = levelOrder.indexOf(currentLevel);
+  if (currentIndex === -1 || currentIndex === levelOrder.length - 1) {
+    return null; // Already at lowest level or invalid
+  }
+  
+  return levelOrder[currentIndex + 1];
+}

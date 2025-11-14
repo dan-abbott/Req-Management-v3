@@ -26,6 +26,9 @@ export type RequirementLevel =
   | 'sub-component'
   | 'material';
 
+// Sprint 4: Relationship types
+export type RelationshipType = 'tests' | 'depends-on' | 'derives-from' | 'relates-to';
+
 export interface Project {
   id: number;
   name: string;
@@ -54,6 +57,21 @@ export interface Item {
   children: number[];
   created_at: string;
   updated_at: string;
+}
+
+// Sprint 4: Relationship interface
+export interface Relationship {
+  id: number;
+  from_id: number;
+  to_id: number;
+  type: RelationshipType;
+  created_at: string;
+}
+
+// Sprint 4: Relationship with item details for display
+export interface RelationshipWithItem extends Relationship {
+  from_item?: Item;
+  to_item?: Item;
 }
 
 export interface AuditLog {
@@ -95,4 +113,22 @@ export interface ItemFormData {
   tester_email?: string;
   level?: RequirementLevel;
   parent_id?: number;
+}
+
+// Sprint 4: Relationship form data
+export interface RelationshipFormData {
+  from_id: number;
+  to_id: number;
+  type: RelationshipType;
+}
+
+// Sprint 4: Metrics for dashboard
+export interface ProjectMetrics {
+  totalItems: number;
+  totalRequirements: number;
+  totalTestCases: number;
+  requirementsWithTests: number;
+  testCoverage: number; // Percentage
+  itemsWithRelationships: number;
+  traceabilityScore: number; // Percentage
 }
