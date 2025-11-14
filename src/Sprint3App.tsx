@@ -125,19 +125,48 @@ export function Sprint3App() {
   };
 
   const handleDeleteClick = (item: Item) => {
-    setItemToDelete(item);
+    setDeletingItem(item);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
+  const handleConfirmDelete = async (deleteChildren: boolean, newParentId?: number | null) => {
+    if (!deletingItem) return;
 
     try {
-      await deleteItem(itemToDelete.id);
-      setItemToDelete(null);
+      if (deleteChildren) {
+        // CASCADE DELETE: Delete item and all its children
+        const childrenToDelete = items.filter(i => i.parent_id === deletingItem.id);
+        
+        // Delete children first
+        for (const child of childrenToDelete) {
+          await deleteItem(child.id);
+        }
+        
+        // Then delete the parent
+        await deleteItem(deletingItem.id);
+      } else if (newParentId !== undefined) {
+        // REASSIGN: Move children to new parent (could be null for root)
+        const childrenToReassign = items.filter(i => i.parent_id === deletingItem.id);
+        
+        // Update all children with new parent
+        for (const child of childrenToReassign) {
+          await itemsAPI.update(child.id, { 
+            parent_id: newParentId 
+          } as Partial<Item>);
+        }
+        
+        // Then delete the item
+        await deleteItem(deletingItem.id);
+      } else {
+        // SIMPLE DELETE: No children, just delete the item
+        await deleteItem(deletingItem.id);
+      }
+
+      setDeletingItem(null);
       setSelectedItemId(null);
       await refresh();
     } catch (error) {
       console.error('Error deleting item:', error);
+      alert('Failed to delete item. Please try again.');
     }
   };
 
@@ -269,11 +298,12 @@ export function Sprint3App() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {itemToDelete && (
+      {deletingItem && (
         <DeleteConfirmation
-          item={itemToDelete}
+          item={deletingItem}
+          allItems={items}
           onConfirm={handleConfirmDelete}
-          onCancel={() => setItemToDelete(null)}
+          onCancel={() => setDeletingItem(null)}
         />
       )}
 

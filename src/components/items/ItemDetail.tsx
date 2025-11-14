@@ -23,9 +23,7 @@ export function ItemDetail({ item, onClose, onEdit, onDelete }: ItemDetailProps)
   }
 
   const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete "${item.title}"?`)) {
-      onDelete(item);
-    }
+    onDelete(item);
   };
 
   return (
