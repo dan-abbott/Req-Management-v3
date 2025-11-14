@@ -11,7 +11,7 @@ import { Item, ItemFormData, ItemType, ItemStatus, Priority } from './types';
 import { LoginPage } from './components/auth/LoginPage';
 import { Header } from './components/layout/Header';
 import { ResizablePanels } from './components/layout/ResizablePanels';
-import { SearchBar } from './components/items/SearchBar';
+import SearchBar from './components/items/SearchBar';
 import FilterBar from './components/items/FilterBar';
 import { ItemTree } from './components/items/ItemTree';
 import { ItemDetail } from './components/items/ItemDetail';
