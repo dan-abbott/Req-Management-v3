@@ -113,7 +113,7 @@ export function Sprint3App() {
     await updateItem(editingItem.id, {
       ...formData,
       version: newVersion,
-      status: newStatus
+      status: newStatus,
       parent_id: formData.parent_id === undefined ? null : formData.parent_id
     } as Partial<ItemFormData>);
     await refresh();
