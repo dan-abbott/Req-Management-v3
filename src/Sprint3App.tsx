@@ -114,6 +114,7 @@ export function Sprint3App() {
       ...formData,
       version: newVersion,
       status: newStatus
+      parent_id: formData.parent_id === undefined ? null : formData.parent_id
     } as Partial<ItemFormData>);
     await refresh();
   };
