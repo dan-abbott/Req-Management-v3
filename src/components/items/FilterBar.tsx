@@ -1,52 +1,60 @@
-// FilterBar - Updated with multiselect dropdowns
+// FilterBar - Compact layout with 3 filters on single line
 
-import { ItemType, ItemStatus, Priority } from '../../types';
-import { ITEM_TYPES, STATUS_OPTIONS, PRIORITY_OPTIONS } from '../../utils/constants';
 import { Multiselect } from '../common/Multiselect';
+import { ItemType, ItemStatus, Priority } from '../../types';
+import {
+  ITEM_TYPES,
+  STATUS_OPTIONS,
+  PRIORITY_OPTIONS,
+} from '../../utils/constants';
 
 interface FilterBarProps {
   selectedTypes: ItemType[];
-  onTypesChange: (types: ItemType[]) => void;
   selectedStatuses: ItemStatus[];
-  onStatusesChange: (statuses: ItemStatus[]) => void;
   selectedPriorities: Priority[];
+  onTypesChange: (types: ItemType[]) => void;
+  onStatusesChange: (statuses: ItemStatus[]) => void;
   onPrioritiesChange: (priorities: Priority[]) => void;
   onClearFilters: () => void;
 }
 
-export default function FilterBar({
+export function FilterBar({
   selectedTypes,
-  onTypesChange,
   selectedStatuses,
-  onStatusesChange,
   selectedPriorities,
+  onTypesChange,
+  onStatusesChange,
   onPrioritiesChange,
-  onClearFilters
+  onClearFilters,
 }: FilterBarProps) {
   // Get available statuses based on selected types
   const availableStatuses = () => {
     if (selectedTypes.length === 0) {
-      // Show all unique statuses
+      // No types selected - show all unique statuses
       const allStatuses = new Set<ItemStatus>();
-      Object.values(STATUS_OPTIONS).forEach(options => {
-        options.forEach(opt => allStatuses.add(opt.value));
+      Object.values(STATUS_OPTIONS).forEach(statuses => {
+        statuses.forEach(s => allStatuses.add(s.value));
       });
       return Array.from(allStatuses).map(value => ({
         value,
-        label: STATUS_OPTIONS.epic.find(s => s.value === value)?.label ||
-               STATUS_OPTIONS.requirement.find(s => s.value === value)?.label ||
-               STATUS_OPTIONS['test-case'].find(s => s.value === value)?.label ||
-               STATUS_OPTIONS.defect.find(s => s.value === value)?.label ||
-               value
+        label: value.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
       }));
     }
-
-    // Show statuses for selected types
-    const statuses = new Set<ItemStatus>();
-    selectedTypes.forEach(type => {
-      STATUS_OPTIONS[type].forEach(opt => statuses.add(opt.value));
-    });
-    return Array.from(statuses).map(value => ({
+    
+    if (selectedTypes.length === 1) {
+      // Single type selected - show its statuses
+      return STATUS_OPTIONS[selectedTypes[0]];
+    }
+    
+    // Multiple types - show intersection of statuses
+    const statusSets = selectedTypes.map(type => 
+      new Set(STATUS_OPTIONS[type].map(s => s.value))
+    );
+    const intersection = statusSets.reduce((acc, set) => 
+      new Set([...acc].filter(x => set.has(x)))
+    );
+    
+    return Array.from(intersection).map(value => ({
       value,
       label: STATUS_OPTIONS[selectedTypes[0]].find(s => s.value === value)?.label || value
     }));
@@ -57,41 +65,50 @@ export default function FilterBar({
                            selectedPriorities.length > 0;
 
   return (
-    <div className="space-y-3">
-      {/* Type Filter */}
-      <Multiselect
-        label="Type"
-        options={ITEM_TYPES}
-        selected={selectedTypes}
-        onChange={(values) => onTypesChange(values as ItemType[])}
-        placeholder="All types"
-      />
+    <div className="space-y-2">
+      {/* Three filters on one line - narrower widths */}
+      <div className="flex gap-2">
+        {/* Type Filter - 30% width */}
+        <div className="flex-[0_0_30%]">
+          <Multiselect
+            label="Type"
+            options={ITEM_TYPES}
+            selected={selectedTypes}
+            onChange={(values) => onTypesChange(values as ItemType[])}
+            placeholder="All"
+          />
+        </div>
 
-      {/* Status Filter */}
-      <Multiselect
-        label="Status"
-        options={availableStatuses()}
-        selected={selectedStatuses}
-        onChange={(values) => onStatusesChange(values as ItemStatus[])}
-        placeholder="All statuses"
-      />
+        {/* Status Filter - 35% width */}
+        <div className="flex-[0_0_35%]">
+          <Multiselect
+            label="Status"
+            options={availableStatuses()}
+            selected={selectedStatuses}
+            onChange={(values) => onStatusesChange(values as ItemStatus[])}
+            placeholder="All"
+          />
+        </div>
 
-      {/* Priority Filter */}
-      <Multiselect
-        label="Priority"
-        options={PRIORITY_OPTIONS}
-        selected={selectedPriorities}
-        onChange={(values) => onPrioritiesChange(values as Priority[])}
-        placeholder="All priorities"
-      />
+        {/* Priority Filter - 30% width */}
+        <div className="flex-[0_0_30%]">
+          <Multiselect
+            label="Priority"
+            options={PRIORITY_OPTIONS}
+            selected={selectedPriorities}
+            onChange={(values) => onPrioritiesChange(values as Priority[])}
+            placeholder="All"
+          />
+        </div>
+      </div>
 
-      {/* Clear Filters Button */}
+      {/* Clear Filters Button - compact */}
       {hasActiveFilters && (
         <button
           onClick={onClearFilters}
-          className="w-full text-xs font-medium text-gray-600 hover:text-gray-800 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="w-full text-xs font-medium text-gray-600 hover:text-gray-800 py-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
         >
-          Clear All Filters
+          Clear Filters
         </button>
       )}
     </div>
