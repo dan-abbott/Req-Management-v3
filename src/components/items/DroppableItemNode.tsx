@@ -89,7 +89,7 @@ export function DroppableItemNode({
         ${isOver ? 'bg-[#3FB95A] bg-opacity-20' : ''}
         ${isBeingDragged || isDragging ? 'opacity-40' : 'opacity-100'}
       `}
-      style={{ paddingLeft: `${node.level * 24 + 16}px` }}
+      style={{ paddingLeft: `${(node.level || 0) * 24 + 16}px` }}
       onClick={() => onSelect(node.id)}
     >
       {/* Drag Handle */}
