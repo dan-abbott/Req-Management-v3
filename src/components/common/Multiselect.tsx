@@ -1,4 +1,4 @@
-// Multiselect - Dropdown with checkbox multiselect
+// Multiselect - Dropdown with checkbox multiselect (fixed z-index)
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -71,8 +71,9 @@ export function Multiselect({ label, options, selected, onChange, placeholder = 
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
+      {/* FIXED: Changed z-10 to z-50 so dropdown appears above drop zone */}
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
           {options.map(option => (
             <label
               key={option.value}
