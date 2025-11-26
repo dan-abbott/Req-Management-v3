@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { db } from '../db';
 import { Project, ProjectFormData } from '../../types';
 
 export const projectsAPI = {
@@ -6,67 +6,74 @@ export const projectsAPI = {
    * Fetch all projects ordered by creation date (newest first)
    */
   async getAll(): Promise<Project[]> {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    const projects = await db.query<Project>(
+      'SELECT * FROM projects ORDER BY created_at DESC'
+    );
+    return projects;
   },
 
   /**
    * Get a single project by ID
    */
   async getById(id: number): Promise<Project> {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const project = await db.queryOne<Project>(
+      'SELECT * FROM projects WHERE id = $1',
+      [id]
+    );
     
-    if (error) throw error;
-    return data;
+    if (!project) throw new Error('Project not found');
+    return project;
   },
 
   /**
    * Create a new project
    */
   async create(projectData: ProjectFormData): Promise<Project> {
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([projectData])
-      .select()
-      .single();
+    const result = await db.queryOne<Project>(
+      `INSERT INTO projects (name, pid, project_manager, lead_engineer, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING *`,
+      [
+        projectData.name,
+        projectData.pid,
+        projectData.project_manager || null,
+        projectData.lead_engineer || null
+      ]
+    );
     
-    if (error) throw error;
-    return data;
+    if (!result) throw new Error('Failed to create project');
+    return result;
   },
 
   /**
    * Update an existing project
    */
   async update(id: number, updates: Partial<ProjectFormData>): Promise<Project> {
-    const { data, error } = await supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    const result = await db.queryOne<Project>(
+      `UPDATE projects 
+       SET name = COALESCE($1, name),
+           pid = COALESCE($2, pid),
+           project_manager = COALESCE($3, project_manager),
+           lead_engineer = COALESCE($4, lead_engineer)
+       WHERE id = $5
+       RETURNING *`,
+      [
+        updates.name || null,
+        updates.pid || null,
+        updates.project_manager || null,
+        updates.lead_engineer || null,
+        id
+      ]
+    );
     
-    if (error) throw error;
-    return data;
+    if (!result) throw new Error('Project not found');
+    return result;
   },
 
   /**
    * Delete a project (cascade deletes all items)
    */
   async delete(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    await db.query('DELETE FROM projects WHERE id = $1', [id]);
   }
 };

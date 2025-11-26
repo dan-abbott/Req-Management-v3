@@ -1,5 +1,6 @@
-import { supabase } from '../supabase';
+import { db } from '../db';
 import { AuditLog } from '../../types';
+import { getCurrentUser } from '../auth';
 
 interface LogEntry {
   item_id: number;
@@ -12,69 +13,54 @@ interface LogEntry {
 export const auditLogAPI = {
   /**
    * Create an audit log entry
-   * Automatically captures user email and name from current session
+   * Gets user info from Clerk
    */
   async log(entry: LogEntry): Promise<AuditLog> {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('No authenticated user');
-    }
+    const user = getCurrentUser();
 
-    const logData = {
-      ...entry,
-      user_email: user.email!,
-      user_name: user.user_metadata.full_name || user.email!,
-      timestamp: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .insert([logData])
-      .select()
-      .single();
+    const logEntry = await db.queryOne<AuditLog>(
+      `INSERT INTO audit_logs (
+        item_id, user_email, user_name, action, field_name, old_value, new_value, timestamp
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      RETURNING *`,
+      [
+        entry.item_id,
+        user.email,
+        user.name,
+        entry.action,
+        entry.field_name || null,
+        entry.old_value || null,
+        entry.new_value || null
+      ]
+    );
     
-    if (error) throw error;
-    return data;
+    if (!logEntry) throw new Error('Failed to create audit log');
+    return logEntry;
   },
 
   /**
    * Get all audit logs for a specific item
    */
   async getByItemId(itemId: number): Promise<AuditLog[]> {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .eq('item_id', itemId)
-      .order('timestamp', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    const logs = await db.query<AuditLog>(
+      'SELECT * FROM audit_logs WHERE item_id = $1 ORDER BY timestamp DESC',
+      [itemId]
+    );
+    return logs;
   },
 
   /**
    * Get all audit logs for a project (via items)
    */
   async getByProjectId(projectId: number): Promise<AuditLog[]> {
-    // First get all item IDs for this project
-    const { data: items } = await supabase
-      .from('items')
-      .select('id')
-      .eq('project_id', projectId);
-    
-    if (!items || items.length === 0) return [];
-
-    const itemIds = items.map(item => item.id);
-
-    // Then get audit logs for those items
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .in('item_id', itemIds)
-      .order('timestamp', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    const logs = await db.query<AuditLog>(
+      `SELECT al.* 
+       FROM audit_logs al
+       INNER JOIN items i ON al.item_id = i.id
+       WHERE i.project_id = $1
+       ORDER BY al.timestamp DESC`,
+      [projectId]
+    );
+    return logs;
   }
 };

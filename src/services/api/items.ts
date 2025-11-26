@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { db } from '../db';
 import { Item, ItemFormData } from '../../types';
 import { auditLogAPI } from './auditLog';
 
@@ -7,66 +7,71 @@ export const itemsAPI = {
    * Fetch all items for a project
    */
   async getByProject(projectId: number): Promise<Item[]> {
-    const { data, error } = await supabase
-      .from('items')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
-    
-    if (error) throw error;
-    return data || [];
+    const items = await db.query<Item>(
+      'SELECT * FROM items WHERE project_id = $1 ORDER BY created_at ASC',
+      [projectId]
+    );
+    return items;
   },
 
   /**
    * Get a single item by ID
    */
   async getById(id: number): Promise<Item> {
-    const { data, error } = await supabase
-      .from('items')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const item = await db.queryOne<Item>(
+      'SELECT * FROM items WHERE id = $1',
+      [id]
+    );
     
-    if (error) throw error;
-    return data;
+    if (!item) throw new Error('Item not found');
+    return item;
   },
 
   /**
    * Create a new item with audit logging
    */
   async create(itemData: ItemFormData, projectId: number): Promise<Item> {
-    // Prepare item data
-    const newItem = {
-      ...itemData,
-      project_id: projectId,
-      version: 1,
-      children: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    // Insert item
-    const { data, error } = await supabase
-      .from('items')
-      .insert([newItem])
-      .select()
-      .single();
+    const newItem = await db.queryOne<Item>(
+      `INSERT INTO items (
+        project_id, type, title, description, rationale, test_method,
+        status, priority, owner, reviewer_email, tester_email, level,
+        version, parent_id, children, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
+      RETURNING *`,
+      [
+        projectId,
+        itemData.type,
+        itemData.title,
+        itemData.description || null,
+        itemData.rationale || null,
+        itemData.test_method || null,
+        itemData.status,
+        itemData.priority || null,
+        itemData.owner || null,
+        itemData.reviewer_email || null,
+        itemData.tester_email || null,
+        itemData.level || null,
+        1, // version
+        itemData.parent_id || null,
+        [] // children array
+      ]
+    );
     
-    if (error) throw error;
+    if (!newItem) throw new Error('Failed to create item');
 
     // Create audit log
     await auditLogAPI.log({
-      item_id: data.id,
+      item_id: newItem.id,
       action: 'create',
-      new_value: data.title
+      new_value: newItem.title
     });
 
     // If this item has a parent, update parent's children array
     if (itemData.parent_id) {
-      await this.updateParentChildren(itemData.parent_id, data.id, 'add');
+      await this.updateParentChildren(itemData.parent_id, newItem.id, 'add');
     }
 
-    return data;
+    return newItem;
   },
 
   /**
@@ -76,22 +81,68 @@ export const itemsAPI = {
     // Get current item to compare changes
     const currentItem = await this.getById(id);
 
-    // Prepare updates with incremented version
-    const itemUpdates = {
-      ...updates,
-      version: currentItem.version + 1,
-      updated_at: new Date().toISOString()
-    };
+    // Build dynamic update query
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
 
-    // Update item
-    const { data, error } = await supabase
-      .from('items')
-      .update(itemUpdates)
-      .eq('id', id)
-      .select()
-      .single();
+    if (updates.title !== undefined) {
+      fields.push(`title = $${paramIndex++}`);
+      values.push(updates.title);
+    }
+    if (updates.description !== undefined) {
+      fields.push(`description = $${paramIndex++}`);
+      values.push(updates.description);
+    }
+    if (updates.rationale !== undefined) {
+      fields.push(`rationale = $${paramIndex++}`);
+      values.push(updates.rationale);
+    }
+    if (updates.test_method !== undefined) {
+      fields.push(`test_method = $${paramIndex++}`);
+      values.push(updates.test_method);
+    }
+    if (updates.status !== undefined) {
+      fields.push(`status = $${paramIndex++}`);
+      values.push(updates.status);
+    }
+    if (updates.priority !== undefined) {
+      fields.push(`priority = $${paramIndex++}`);
+      values.push(updates.priority);
+    }
+    if (updates.owner !== undefined) {
+      fields.push(`owner = $${paramIndex++}`);
+      values.push(updates.owner);
+    }
+    if (updates.reviewer_email !== undefined) {
+      fields.push(`reviewer_email = $${paramIndex++}`);
+      values.push(updates.reviewer_email);
+    }
+    if (updates.tester_email !== undefined) {
+      fields.push(`tester_email = $${paramIndex++}`);
+      values.push(updates.tester_email);
+    }
+    if (updates.level !== undefined) {
+      fields.push(`level = $${paramIndex++}`);
+      values.push(updates.level);
+    }
+    if (updates.parent_id !== undefined) {
+      fields.push(`parent_id = $${paramIndex++}`);
+      values.push(updates.parent_id);
+    }
+
+    // Always update version and updated_at
+    fields.push(`version = version + 1`);
+    fields.push(`updated_at = NOW()`);
     
-    if (error) throw error;
+    values.push(id);
+
+    const updatedItem = await db.queryOne<Item>(
+      `UPDATE items SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values
+    );
+    
+    if (!updatedItem) throw new Error('Item not found');
 
     // Create audit logs for each changed field
     for (const [key, newValue] of Object.entries(updates)) {
@@ -108,7 +159,7 @@ export const itemsAPI = {
       }
     }
 
-    return data;
+    return updatedItem;
   },
 
   /**
@@ -124,12 +175,7 @@ export const itemsAPI = {
     }
 
     // Delete item (cascade deletes children, relationships, comments, audit logs)
-    const { error } = await supabase
-      .from('items')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    await db.query('DELETE FROM items WHERE id = $1', [id]);
   },
 
   /**
@@ -140,19 +186,17 @@ export const itemsAPI = {
     childId: number, 
     operation: 'add' | 'remove'
   ): Promise<void> {
-    const parent = await this.getById(parentId);
-    
-    let newChildren: number[];
     if (operation === 'add') {
-      newChildren = [...parent.children, childId];
+      await db.query(
+        'UPDATE items SET children = array_append(children, $1) WHERE id = $2',
+        [childId, parentId]
+      );
     } else {
-      newChildren = parent.children.filter(id => id !== childId);
+      await db.query(
+        'UPDATE items SET children = array_remove(children, $1) WHERE id = $2',
+        [childId, parentId]
+      );
     }
-
-    await supabase
-      .from('items')
-      .update({ children: newChildren })
-      .eq('id', parentId);
   },
 
   /**

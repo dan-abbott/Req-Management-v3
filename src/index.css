@@ -1,9 +1,9 @@
+/* Load Fresh Consulting fonts - MUST BE FIRST */
+@import url('https://fonts.cdnfonts.com/css/suisse-intl');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Load Fresh Consulting fonts */
-@import url('https://fonts.cdnfonts.com/css/suisse-intl');
 
 body {
   margin: 0;
