@@ -28,3 +28,6 @@ dist-ssr
 .env.local
 .env.production
 *.zip
+MigrationDocs/Database Schema.csv
+package-lock.json
+package.json
